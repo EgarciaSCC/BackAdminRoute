@@ -8,6 +8,7 @@ import io.swagger.v3.oas.models.info.License;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+@SuppressWarnings("unused")
 @Configuration
 public class OpenApiConfig {
 
@@ -17,9 +18,9 @@ public class OpenApiConfig {
                 .info(new Info().title("NCA Admin API")
                         .description("API para gestión de rutas y buses (microservicio admin)")
                         .version("v0.0.1")
-                        .contact(new Contact().name("NCA Team").email("devops@nca.example"))
+                        .contact(new Contact().name("NCA Team").email("info@securecoreconsulting.com"))
                         .license(new License().name("MIT").url("https://opensource.org/licenses/MIT")))
-                .externalDocs(new ExternalDocumentation().description("Repositorio").url("https://example.com"));
+                .externalDocs(new ExternalDocumentation().description("Repositorio").url("https://ncacademico.app/support"));
     }
 }
 
