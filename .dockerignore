@@ -1,0 +1,13 @@
+# Ignorar artefactos build y carpetas de IDE
+target/
+*.log
+*.tmp
+*.bak
+.settings/
+.vscode/
+.idea/
+*.iml
+**/node_modules
+**/dist
+**/.git
+**/.gitignore

@@ -1,0 +1,25 @@
+# Cloud Build config para construir la imagen y desplegar en Cloud Run (GCP Free Tier compatible)
+steps:
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['build', '-t', 'gcr.io/$PROJECT_ID/admin:latest', '.']
+  - name: 'gcr.io/cloud-builders/docker'
+    args: ['push', 'gcr.io/$PROJECT_ID/admin:latest']
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: gcloud
+    args:
+      - 'run'
+      - 'deploy'
+      - 'admin-service'
+      - '--image'
+      - 'gcr.io/$PROJECT_ID/admin:latest'
+      - '--region'
+      - 'us-central1'
+      - '--platform'
+      - 'managed'
+      - '--allow-unauthenticated'
+      - '--port'
+      - '8080'
+images:
+  - 'gcr.io/$PROJECT_ID/admin:latest'
+options:
+  machineType: 'E2_SMALL'
