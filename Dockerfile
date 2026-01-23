@@ -2,7 +2,7 @@
 # Usa Java 21 (Eclipse Temurin). Ajusta versiones si tu entorno lo requiere.
 
 # Build stage
-FROM maven:3.10.1-eclipse-temurin-21 as builder
+FROM eclipse-temurin:21-jdk as builder
 WORKDIR /workspace
 # Copiamos todo el proyecto (se usa mvnw si está presente)
 COPY . /workspace/
