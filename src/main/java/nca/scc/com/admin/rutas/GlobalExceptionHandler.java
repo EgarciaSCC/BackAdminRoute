@@ -4,6 +4,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.oauth2.jwt.BadJwtException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -23,6 +24,22 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
         body.put("error", "not_found");
         body.put("message", ex.getMessage());
         return new ResponseEntity<>(body, HttpStatus.NOT_FOUND);
+    }
+
+    @ExceptionHandler(MissingTenantException.class)
+    public ResponseEntity<Object> handleMissingTenant(MissingTenantException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "missing_tenant");
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.BAD_REQUEST);
+    }
+
+    @ExceptionHandler(BadJwtException.class)
+    public ResponseEntity<Object> handleBadJwt(BadJwtException ex) {
+        Map<String, Object> body = new HashMap<>();
+        body.put("error", "invalid_token");
+        body.put("message", ex.getMessage());
+        return new ResponseEntity<>(body, HttpStatus.UNAUTHORIZED);
     }
 
     @Override

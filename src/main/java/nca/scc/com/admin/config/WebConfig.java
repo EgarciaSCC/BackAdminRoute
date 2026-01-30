@@ -25,6 +25,11 @@ public class WebConfig implements WebMvcConfigurer {
 
         // If user set wildcard '*' or environment variable APP_CORS_ALLOW_ALL=true, allow any origin but disable credentials
         boolean hasWildcard = false;
+        // treat empty configured origins as wildcard (developer-friendly default)
+        if (origins.length == 0) {
+            hasWildcard = true;
+        }
+
         for (String o : origins) {
             if ("*".equals(o)) {
                 hasWildcard = true;
@@ -38,14 +43,14 @@ public class WebConfig implements WebMvcConfigurer {
         }
 
         if (hasWildcard) {
-            registry.addMapping("/api/**")
+            registry.addMapping("/**")
                     .allowedOriginPatterns("*")
                     .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                     .allowedHeaders("*")
                     .allowCredentials(false)
                     .maxAge(3600);
         } else {
-            registry.addMapping("/api/**")
+            registry.addMapping("/**")
                     .allowedOrigins(origins)
                     .allowedMethods("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS")
                     .allowedHeaders("*")

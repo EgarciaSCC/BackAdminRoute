@@ -1,6 +1,7 @@
 package nca.scc.com.admin.rutas.ruta;
 
 import jakarta.validation.Valid;
+import nca.scc.com.admin.rutas.ruta.dto.RutaResponseDTO;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
@@ -17,16 +18,18 @@ public class RutaController {
         this.service = service;
     }
 
+    // Devuelve DTOs completos con relaciones
     @GetMapping
-    public List<Ruta> list() {
-        return service.listAll();
+    public List<RutaResponseDTO> list() {
+        return service.listAllFull();
     }
 
     @GetMapping("/{id}")
-    public Ruta get(@PathVariable String id) {
-        return service.getById(id);
+    public RutaResponseDTO get(@PathVariable String id) {
+        return service.getFullById(id);
     }
 
+    // Endpoints para compatibilidad: crear/actualizar la entidad Ruta sin resolver relaciones
     @PostMapping
     public Ruta create(@Valid @RequestBody Ruta ruta) {
         return service.create(ruta);

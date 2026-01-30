@@ -8,6 +8,7 @@ import nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
 @Entity
 @Table(name = "HISTORIAL_RUTA")
@@ -63,6 +64,13 @@ public class HistorialRuta {
        ====================== */
 
     public HistorialRuta() {
+    }
+
+    @PrePersist
+    public void ensureId() {
+        if (id == null || id.isBlank()) {
+            id = UUID.randomUUID().toString();
+        }
     }
 
     /* ======================

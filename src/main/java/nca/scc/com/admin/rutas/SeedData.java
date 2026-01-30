@@ -1,5 +1,7 @@
 package nca.scc.com.admin.rutas;
 
+import nca.scc.com.admin.rutas.auth.UsuarioRepository;
+import nca.scc.com.admin.rutas.auth.entity.Usuario;
 import nca.scc.com.admin.rutas.bus.BusRepository;
 import nca.scc.com.admin.rutas.bus.entity.Bus;
 import nca.scc.com.admin.rutas.bus.entity.enums.BusState;
@@ -21,17 +23,23 @@ import nca.scc.com.admin.rutas.sede.SedeRepository;
 import nca.scc.com.admin.rutas.sede.entity.Sede;
 import nca.scc.com.admin.rutas.pasajero.PasajeroRepository;
 import nca.scc.com.admin.rutas.pasajero.entity.Pasajero;
+import nca.scc.com.admin.rutas.historial.HistorialRutaRepository;
+import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
+import nca.scc.com.admin.rutas.novedad.entity.enums.EstadoAprobacion;
+import nca.scc.com.admin.rutas.auth.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Profile;
+import org.springframework.security.crypto.bcrypt.BCrypt;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-@Profile("dev")
+@Profile("default")
 @Component
 public class SeedData implements CommandLineRunner {
 
@@ -44,6 +52,8 @@ public class SeedData implements CommandLineRunner {
     private final SedeRepository sedeRepository;
     private final PasajeroRepository pasajeroRepository;
     private final NovedadRepository novedadRepository;
+    private final HistorialRutaRepository historialRutaRepository;
+    private final UsuarioRepository usuarioRepository;
 
     public SeedData(BusRepository busRepository,
                     ConductorRepository conductorRepository,
@@ -51,7 +61,9 @@ public class SeedData implements CommandLineRunner {
                     RutaRepository rutaRepository,
                     SedeRepository sedeRepository,
                     PasajeroRepository pasajeroRepository,
-                    NovedadRepository novedadRepository) {
+                    NovedadRepository novedadRepository,
+                    HistorialRutaRepository historialRutaRepository,
+                    UsuarioRepository usuarioRepository) {
         this.busRepository = busRepository;
         this.conductorRepository = conductorRepository;
         this.coordinadorRepository = coordinadorRepository;
@@ -59,90 +71,120 @@ public class SeedData implements CommandLineRunner {
         this.sedeRepository = sedeRepository;
         this.pasajeroRepository = pasajeroRepository;
         this.novedadRepository = novedadRepository;
+        this.historialRutaRepository = historialRutaRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     @Override
     public void run(String... args) throws Exception {
         log.info("Starting seed data population...");
 
-        // Buses
-        Bus b1 = new Bus(null, "ABC123", 40, "Mercedes", "Sprinter", "2025-06-01", "2025-12-31", MotorType.combustible, null, BusState.activo);
-        Bus b2 = new Bus(null, "DEF456", 30, "Volvo", "XC90", "2025-05-15", "2025-11-30", MotorType.hibrido, null, BusState.mantenimiento);
-        Bus b3 = new Bus(null, "GHI789", 25, "Iveco", "Daily", "2024-12-01", "2024-12-31", MotorType.otro, "eléctrico", BusState.inactivo);
-        List<Bus> savedBuses = busRepository.saveAll(Arrays.asList(b1, b2, b3));
+        String transport1 = "transport-1";
+
+        // Buses: 10
+        List<Bus> buses = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            buses.add(new Bus(null, "PLACA" + i, 20 + i, "Marca" + i, "Modelo" + i, "2025-01-01", "2025-12-31", MotorType.combustible, null, BusState.activo));
+        }
+        List<Bus> savedBuses = busRepository.saveAll(buses);
         log.info("Saved buses: {}", busRepository.count());
 
-        // Conductores
-        Conductor c1 = new Conductor(null, "Carlos Perez", "100200300", "3001112222", "A12345", ConductorState.disponible);
-        Conductor c2 = new Conductor(null, "María Gómez", "200300400", "3003334444", "B98765", ConductorState.asignado);
-        List<Conductor> savedConductors = conductorRepository.saveAll(Arrays.asList(c1, c2));
-        log.info("Saved conductors: {}", conductorRepository.count());
+        // Conductores: 10
+        List<Conductor> conductores = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            conductores.add(new Conductor(null, "Conductor " + i, "CED" + i, "30000000" + i, "LIC" + i, ConductorState.disponible));
+        }
+        List<Conductor> savedConductors = conductorRepository.saveAll(conductores);
+        log.info("Saved conductores: {}", conductorRepository.count());
 
-        // Coordinadores
-        Coordinador co1 = new Coordinador(null, "Laura Ruiz", "300400500", "3005556666", "laura@example.com", CoordinadorState.disponible);
-        Coordinador co2 = new Coordinador(null, "José Martinez", "400500600", "3007778888", "jose@example.com", CoordinadorState.inactivo);
-        List<Coordinador> savedCoordinators = coordinadorRepository.saveAll(Arrays.asList(co1, co2));
-        log.info("Saved coordinators: {}", coordinadorRepository.count());
+        // Coordinadores: 10
+        List<Coordinador> coordinadores = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            coordinadores.add(new Coordinador(null, "Coordinador " + i, "CEDC" + i, "30010000" + i, "coord" + i + "@example.com", CoordinadorState.disponible));
+        }
+        List<Coordinador> savedCoordinators = coordinadorRepository.saveAll(coordinadores);
+        log.info("Saved coordinadores: {}", coordinadorRepository.count());
 
-        // Sedes
-        Sede s1 = new Sede(null, "Sede Central", "Calle 100 #10-20", "Bogotá", 4.711, -74.072);
-        Sede s2 = new Sede(null, "Sede Norte", "Av. Norte 50", "Bogotá", 4.750, -74.040);
-        sedeRepository.saveAll(Arrays.asList(s1, s2));
+        // Sedes: 10 (todas asociadas a transport-1)
+        List<Sede> sedes = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            Sede s = new Sede(null, "Sede " + i, "Direccion " + i, "Ciudad", 4.7 + i * 0.001, -74.0 + i * 0.001);
+            s.setTransportId(transport1);
+            sedes.add(s);
+        }
+        List<Sede> savedSedes = sedeRepository.saveAll(sedes);
         log.info("Saved sedes: {}", sedeRepository.count());
 
-        // Pasajeros
-        Pasajero p1 = new Pasajero(null, "Juanito Pérez", "5A", "Calle 1 #2-3", "Chapinero", 4.710, -74.070, false);
-        Pasajero p2 = new Pasajero(null, "Ana Gómez", "4B", "Calle 2 #3-4", "Suba", 4.760, -74.050, false);
-        pasajeroRepository.saveAll(Arrays.asList(p1, p2));
+        // Pasajeros: 10, distribuir por sedes
+        List<Pasajero> pasajeros = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            Pasajero p = new Pasajero(null, "Estudiante " + i, "Curso " + i, "Dir " + i, "Barrio", 4.7 + i * 0.001, -74.0 + i * 0.001, false);
+            p.setSedeId(savedSedes.get((i - 1) % savedSedes.size()).getId());
+            pasajeros.add(p);
+        }
+        pasajeroRepository.saveAll(pasajeros);
         log.info("Saved pasajeros: {}", pasajeroRepository.count());
 
-        // Rutas (asociamos ids generados de buses/conductores/coordinadores)
-        Ruta r1 = new Ruta();
-        r1.setNombre("Ruta Centro-Occidente");
-        if (!savedBuses.isEmpty()) r1.busId(savedBuses.get(0).getId());
-        if (!savedConductors.isEmpty()) r1.conductorId(savedConductors.get(0).getId());
-        if (!savedCoordinators.isEmpty()) r1.coordinadorId(savedCoordinators.get(0).getId());
-
-        Ruta r2 = new Ruta();
-        r2.setNombre("Ruta Norte-Sur");
-        if (savedBuses.size() > 1) r2.busId(savedBuses.get(1).getId());
-        if (savedConductors.size() > 1) r2.conductorId(savedConductors.get(1).getId());
-        if (savedCoordinators.size() > 1) r2.coordinadorId(savedCoordinators.get(1).getId());
-
-        rutaRepository.saveAll(Arrays.asList(r1, r2));
+        // Rutas: 10, asignar bus/conductor/coordinador/sede round-robin
+        List<Ruta> rutas = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            Ruta r = new Ruta();
+            r.setNombre("Ruta " + i);
+            r.busId(savedBuses.get((i - 1) % savedBuses.size()).getId());
+            r.conductorId(savedConductors.get((i - 1) % savedConductors.size()).getId());
+            r.coordinadorId(savedCoordinators.get((i - 1) % savedCoordinators.size()).getId());
+            r.sedeId(savedSedes.get((i - 1) % savedSedes.size()).getId());
+            rutas.add(r);
+        }
+        List<Ruta> savedRutas = rutaRepository.saveAll(rutas);
         log.info("Saved rutas: {}", rutaRepository.count());
 
-        // Novedades por defecto
-        Novedad n1 = new Novedad();
-        n1.setRutaId(r1.getId());
-        n1.setTitulo("Cambio de horario");
-        n1.setMensaje("La ruta tendrá un cambio de horario el próximo lunes");
-        n1.setTipo(NovedadTipo.info);
-        n1.setCategoria(NovedadCategoria.cambio_horario);
-        n1.setRequiereAprobacion(false);
-        n1.setEstadoAprobacion(null);
-        n1.setCreadoPor("Sistema");
-        n1.setRolCreador(RolCreador.coordinador);
-        n1.setEstudianteId(null);
-        n1.setCreatedAt(LocalDateTime.now());
-        n1.setLeida(false);
-
-        Novedad n2 = new Novedad();
-        n2.setRutaId(r2.getId());
-        n2.setTitulo("Novedad: retraso");
-        n2.setMensaje("El bus llegará con 15 minutos de retraso");
-        n2.setTipo(NovedadTipo.alerta);
-        n2.setCategoria(NovedadCategoria.incidente);
-        n2.setRequiereAprobacion(true);
-        n2.setEstadoAprobacion(null);
-        n2.setCreadoPor("María Pérez");
-        n2.setRolCreador(RolCreador.coordinador);
-        n2.setEstudianteId(null);
-        n2.setCreatedAt(LocalDateTime.now());
-        n2.setLeida(false);
-
-        novedadRepository.saveAll(Arrays.asList(n1, n2));
+        // Novedades: 10, asignadas a rutas
+        List<Novedad> novedades = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            Novedad n = new Novedad();
+            n.setRutaId(savedRutas.get((i - 1) % savedRutas.size()).getId());
+            n.setTitulo("Novedad " + i);
+            n.setMensaje("Mensaje de novedad " + i);
+            n.setTipo(NovedadTipo.info);
+            n.setCategoria(NovedadCategoria.otro);
+            n.setRequiereAprobacion(false);
+            n.setCreadoPor("Sistema");
+            n.setRolCreador(RolCreador.coordinador);
+            n.setCreatedAt(LocalDateTime.now());
+            n.setLeida(false);
+            novedades.add(n);
+        }
+        novedadRepository.saveAll(novedades);
         log.info("Saved novedades: {}", novedadRepository.count());
+
+        // Historiales: 10, asociados a rutas
+        List<HistorialRuta> historiales = new ArrayList<>();
+        for (int i = 1; i <= 10; i++) {
+            HistorialRuta h = new HistorialRuta();
+            h.setRutaId(savedRutas.get((i - 1) % savedRutas.size()).getId());
+            h.setFecha("2025-01-0" + ((i % 9) + 1));
+            h.setHoraInicio("07:00");
+            h.setHoraFin("08:00");
+            h.setEstudiantesRecogidos(i);
+            h.setEstudiantesTotales(10);
+            h.setKmRecorridos(5.0 + i);
+            h.setEstado(nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta.completada);
+            historiales.add(h);
+        }
+        historialRutaRepository.saveAll(historiales);
+        log.info("Saved historiales: {}", historialRutaRepository.count());
+
+        // Usuarios: 1 transport admin + 10 school admins (total 11)
+        String adminPass = BCrypt.hashpw("admin123", BCrypt.gensalt());
+        List<Usuario> usuarios = new ArrayList<>();
+        usuarios.add(new Usuario("Admin Transporte", "transp-admin", adminPass, transport1, Role.ROLE_TRANSPORT));
+        for (int i = 1; i <= 10; i++) {
+            String pass = BCrypt.hashpw("user" + i, BCrypt.gensalt());
+            usuarios.add(new Usuario("Admin Sede " + i, "sede-admin-" + i, pass, savedSedes.get(i - 1).getId(), Role.ROLE_SCHOOL));
+        }
+        usuarioRepository.saveAll(usuarios);
+        log.info("Saved usuarios: {}", usuarioRepository.count());
 
         log.info("Seed data population finished.");
     }

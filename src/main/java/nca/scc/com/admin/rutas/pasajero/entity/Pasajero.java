@@ -24,6 +24,9 @@ public class Pasajero {
     private double lng;
     private boolean asignado;
 
+    // sede a la que pertenece el pasajero
+    private String sedeId;
+
     public Pasajero() {}
 
     @JsonCreator
@@ -70,6 +73,9 @@ public class Pasajero {
     public void lng(double lng) { this.lng = lng; }
     public boolean asignado() { return asignado; }
     public void asignado(boolean asignado) { this.asignado = asignado; }
+
+    public String getSedeId() { return sedeId; }
+    public void setSedeId(String sedeId) { this.sedeId = sedeId; }
 
     @Override
     public boolean equals(Object o) {

@@ -2,6 +2,8 @@ package nca.scc.com.admin.rutas.pasajero;
 
 import nca.scc.com.admin.rutas.NotFoundException;
 import nca.scc.com.admin.rutas.pasajero.entity.Pasajero;
+import nca.scc.com.admin.security.SecurityUtils;
+import nca.scc.com.admin.rutas.auth.Role;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -20,7 +22,17 @@ public class PasajeroService {
     }
 
     public List<Pasajero> listAll() {
-        return repository.findAll();
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+
+        if (role != null && role == Role.ROLE_TRANSPORT && tenant != null) {
+            return repository.findBySedeTransportId(tenant);
+        } else if (role != null && role == Role.ROLE_SCHOOL && tenant != null) {
+            return repository.findBySedeId(tenant);
+        } else {
+            // Default: return all (could be restricted to admins)
+            return repository.findAll();
+        }
     }
 
     public Pasajero getById(String id) {

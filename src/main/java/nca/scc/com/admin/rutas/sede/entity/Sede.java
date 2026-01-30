@@ -25,6 +25,9 @@ public class Sede {
     private double lat;
     private double lng;
 
+    // Id de la empresa de transporte (tenant) que administra esta sede en el sistema
+    private String transportId;
+
     public Sede() {}
 
     @JsonCreator
@@ -63,6 +66,9 @@ public class Sede {
     public void lat(double lat) { this.lat = lat; }
     public double lng() { return lng; }
     public void lng(double lng) { this.lng = lng; }
+
+    public String getTransportId() { return transportId; }
+    public void setTransportId(String transportId) { this.transportId = transportId; }
 
     @Override
     public boolean equals(Object o) {

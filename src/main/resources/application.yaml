@@ -25,4 +25,19 @@ server:
 app:
   cors:
     # Lista separada por comas de orígenes permitidos. Ejemplo local: http://localhost:3000
-    allowed-origins: "http://localhost:3000"
+    allowed-origins: "http://localhost:3000,http://localhost:8082"
+
+jwt:
+  header: Authorization
+  auth-prefix: Bearer
+  claim-tenant: tid
+  # Para desarrollo puede usar un secret (HS256). En producción prefiera jwk-set-uri con RS256.
+  # Valor por defecto para desarrollo local. Puede ser sobrescrito mediante la variable de entorno JWT_SECRET.
+  secret: ${JWT_SECRET:dev-secret-please-change-this-to-a-secure-value}
+  jwk-set-uri: ${JWT_JWK_SET_URI:}
+
+tenant:
+  header: X-Tenant-ID
+
+security:
+  require-authenticated: true

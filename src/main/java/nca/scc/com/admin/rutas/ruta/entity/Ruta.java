@@ -42,10 +42,20 @@ public class Ruta {
     public void busId(String busId) { this.busId = busId; }
     public String conductorId() { return conductorId; }
     public void conductorId(String conductorId) { this.conductorId = conductorId; }
-    public String coordinadorId() { return conductorId; }
+    public String coordinadorId() { return coordinadorId; }
     public void coordinadorId(String coordinadorId) { this.coordinadorId = coordinadorId; }
     public String sedeId() { return sedeId; }
     public void sedeId(String sedeId) { this.sedeId = sedeId; }
+
+    // nuevo: getters/setters estándar para estudiantes (usados por servicios)
+    public List<String> getEstudiantes() { return estudiantes; }
+    public void setEstudiantes(List<String> estudiantes) { this.estudiantes = estudiantes; }
+
+    public String getEstado() { return estado; }
+    public void setEstado(String estado) { this.estado = estado; }
+
+    public String getCreatedAt() { return createdAt; }
+    public void setCreatedAt(String createdAt) { this.createdAt = createdAt; }
 
     @Override
     public boolean equals(Object o) {

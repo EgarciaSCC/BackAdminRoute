@@ -2,7 +2,20 @@ package nca.scc.com.admin.rutas.ruta;
 
 import nca.scc.com.admin.rutas.NotFoundException;
 import nca.scc.com.admin.rutas.ruta.dto.ParadaTemporalDTO;
+import nca.scc.com.admin.rutas.ruta.dto.RutaResponseDTO;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
+import nca.scc.com.admin.rutas.sede.SedeRepository;
+import nca.scc.com.admin.rutas.sede.entity.Sede;
+import nca.scc.com.admin.rutas.bus.BusRepository;
+import nca.scc.com.admin.rutas.bus.entity.Bus;
+import nca.scc.com.admin.rutas.conductor.ConductorRepository;
+import nca.scc.com.admin.rutas.conductor.entity.Conductor;
+import nca.scc.com.admin.rutas.coordinador.CoordinadorRepository;
+import nca.scc.com.admin.rutas.coordinador.entity.Coordinador;
+import nca.scc.com.admin.rutas.pasajero.PasajeroRepository;
+import nca.scc.com.admin.rutas.pasajero.entity.Pasajero;
+import nca.scc.com.admin.security.SecurityUtils;
+import nca.scc.com.admin.rutas.auth.Role;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -17,20 +30,79 @@ import java.util.stream.Collectors;
 public class RutaService {
 
     private final RutaRepository repository;
+    private final SedeRepository sedeRepository;
+    private final BusRepository busRepository;
+    private final ConductorRepository conductorRepository;
+    private final CoordinadorRepository coordinadorRepository;
+    private final PasajeroRepository pasajeroRepository;
 
     // almacenamiento en memoria para paradas temporales por ruta
     private final Map<String, List<ParadaTemporalDTO>> paradasTemporales = new ConcurrentHashMap<>();
 
-    public RutaService(RutaRepository repository) {
+    public RutaService(RutaRepository repository,
+                       SedeRepository sedeRepository,
+                       BusRepository busRepository,
+                       ConductorRepository conductorRepository,
+                       CoordinadorRepository coordinadorRepository,
+                       PasajeroRepository pasajeroRepository) {
         this.repository = repository;
+        this.sedeRepository = sedeRepository;
+        this.busRepository = busRepository;
+        this.conductorRepository = conductorRepository;
+        this.coordinadorRepository = coordinadorRepository;
+        this.pasajeroRepository = pasajeroRepository;
     }
 
+    // Crear ruta validando existencia de referencias
     public Ruta create(Ruta ruta) {
+        // validar bus
+        if (ruta.busId() != null && !ruta.busId().isBlank()) {
+            if (!busRepository.existsById(ruta.busId())) {
+                throw new NotFoundException("Bus not found: " + ruta.busId());
+            }
+        }
+        // validar conductor
+        if (ruta.conductorId() != null && !ruta.conductorId().isBlank()) {
+            if (!conductorRepository.existsById(ruta.conductorId())) {
+                throw new NotFoundException("Conductor not found: " + ruta.conductorId());
+            }
+        }
+        // validar coordinador
+        if (ruta.coordinadorId() != null && !ruta.coordinadorId().isBlank()) {
+            if (!coordinadorRepository.existsById(ruta.coordinadorId())) {
+                throw new NotFoundException("Coordinador not found: " + ruta.coordinadorId());
+            }
+        }
+        // validar sede
+        if (ruta.sedeId() != null && !ruta.sedeId().isBlank()) {
+            if (!sedeRepository.existsById(ruta.sedeId())) {
+                throw new NotFoundException("Sede not found: " + ruta.sedeId());
+            }
+        }
+        // validar estudiantes
+        if (ruta.getEstudiantes() != null) {
+            for (String pid : ruta.getEstudiantes()) {
+                if (!pasajeroRepository.existsById(pid)) {
+                    throw new NotFoundException("Pasajero not found: " + pid);
+                }
+            }
+        }
         return repository.save(ruta);
     }
 
     public List<Ruta> listAll() {
-        return repository.findAll();
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+
+        if (role != null && role == Role.ROLE_TRANSPORT && tenant != null) {
+            List<Sede> sedes = sedeRepository.findByTransportId(tenant);
+            var sedeIds = sedes.stream().map(Sede::getId).toList();
+            return repository.findAll().stream().filter(r -> r.sedeId() != null && sedeIds.contains(r.sedeId())).collect(Collectors.toList());
+        } else if (role != null && role == Role.ROLE_SCHOOL && tenant != null) {
+            return repository.findAll().stream().filter(r -> tenant.equals(r.sedeId())).collect(Collectors.toList());
+        } else {
+            return repository.findAll();
+        }
     }
 
     public Ruta getById(String id) {
@@ -52,6 +124,39 @@ public class RutaService {
         }
         repository.deleteById(id);
         paradasTemporales.remove(id);
+    }
+
+    // Nuevo: devolver DTO completo para una ruta
+    public RutaResponseDTO getFullById(String id) {
+        Ruta r = getById(id);
+        Bus bus = null;
+        Conductor conductor = null;
+        Coordinador coordinador = null;
+        Sede sede = null;
+        List<Pasajero> pasajeros = new ArrayList<>();
+
+        if (r.busId() != null && !r.busId().isBlank()) {
+            bus = busRepository.findById(r.busId()).orElse(null);
+        }
+        if (r.conductorId() != null && !r.conductorId().isBlank()) {
+            conductor = conductorRepository.findById(r.conductorId()).orElse(null);
+        }
+        if (r.coordinadorId() != null && !r.coordinadorId().isBlank()) {
+            coordinador = coordinadorRepository.findById(r.coordinadorId()).orElse(null);
+        }
+        if (r.sedeId() != null && !r.sedeId().isBlank()) {
+            sede = sedeRepository.findById(r.sedeId()).orElse(null);
+        }
+        if (r.getEstudiantes() != null) {
+            for (String pid : r.getEstudiantes()) {
+                pasajeroRepository.findById(pid).ifPresent(pasajeros::add);
+            }
+        }
+        return new RutaResponseDTO(r, bus, conductor, coordinador, sede, pasajeros);
+    }
+
+    public List<RutaResponseDTO> listAllFull() {
+        return listAll().stream().map(r -> getFullById(r.getId())).collect(Collectors.toList());
     }
 
     // Paradas temporales API (in-memory)
