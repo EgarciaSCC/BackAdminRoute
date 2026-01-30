@@ -25,7 +25,7 @@ server:
 app:
   cors:
     # Lista separada por comas de orígenes permitidos. Ejemplo local: http://localhost:3000
-    allowed-origins: "http://localhost:3000,http://localhost:8082,https://id-preview--0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovable.app,https://*.lovable.app"
+    allowed-origins: "http://localhost:3000,http://localhost:8082,http://backadminroute-production.up.railway.app,https://id-preview--0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovable.app,https://*.lovable.app"
 
 jwt:
   header: Authorization
