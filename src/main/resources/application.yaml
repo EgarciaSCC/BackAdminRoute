@@ -25,8 +25,8 @@ server:
 app:
   auth:
     # Credenciales cifradas con AES-256. Si no se define, se asumen en claro.
-    aes-base64-key: ${APP_AES_BASE64_KEY:}
-    aes-base64-iv: ${APP_AES_BASE64_IV:}
+    aes-base64-key: "NCA-Appmobile-2024-SecureKey-256!"
+    aes-base64-iv: "NCA-IV-2024-1234"
     max-failed-attempts: 5
     failed-attempts-window-minutes: 15
     block-duration-minutes: 30
