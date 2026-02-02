@@ -23,9 +23,16 @@ server:
   port: 8080
 
 app:
+  auth:
+    # Credenciales cifradas con AES-256. Si no se define, se asumen en claro.
+    aes-base64-key: ${APP_AES_BASE64_KEY:}
+    aes-base64-iv: ${APP_AES_BASE64_IV:}
+    max-failed-attempts: 5
+    failed-attempts-window-minutes: 15
+    block-duration-minutes: 30
   cors:
     # Lista separada por comas de orígenes permitidos. Ejemplo local: http://localhost:3000
-    allowed-origins: "http://localhost:3000,http://localhost:8082,https://backadminroute-production.up.railway.app/*,https://id-preview--0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovable.app,https://*.lovable.app"
+    allowed-origins: "http://localhost:3000,http://localhost:8082,https://backadminroute-production.up.railway.app/*,https://id-preview--0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovable.app,https://*.lovable.app,https://lovable.dev/projects/dd1f27a6-7487-41c1-9e9c-b8f189d3da64"
 
 jwt:
   header: Authorization

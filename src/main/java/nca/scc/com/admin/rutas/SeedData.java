@@ -178,10 +178,15 @@ public class SeedData implements CommandLineRunner {
         // Usuarios: 1 transport admin + 10 school admins (total 11)
         String adminPass = BCrypt.hashpw("admin123", BCrypt.gensalt());
         List<Usuario> usuarios = new ArrayList<>();
-        usuarios.add(new Usuario("Admin Transporte", "transp-admin", adminPass, transport1, Role.ROLE_TRANSPORT));
+        Usuario u0 = new Usuario("Admin Transporte", "transp-admin", adminPass, transport1, Role.ROLE_TRANSPORT);
+        u0.setEmail("transp-admin@example.com");
+        u0.setConductorId(savedConductors.get(0).getId());
+        usuarios.add(u0);
         for (int i = 1; i <= 10; i++) {
             String pass = BCrypt.hashpw("user" + i, BCrypt.gensalt());
-            usuarios.add(new Usuario("Admin Sede " + i, "sede-admin-" + i, pass, savedSedes.get(i - 1).getId(), Role.ROLE_SCHOOL));
+            Usuario u = new Usuario("Admin Sede " + i, "sede-admin-" + i, pass, savedSedes.get(i - 1).getId(), Role.ROLE_SCHOOL);
+            u.setEmail("sede-admin-" + i + "@example.com");
+            usuarios.add(u);
         }
         usuarioRepository.saveAll(usuarios);
         log.info("Saved usuarios: {}", usuarioRepository.count());

@@ -4,4 +4,6 @@ import nca.scc.com.admin.rutas.ruta.entity.Ruta;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface RutaRepository extends JpaRepository<Ruta, String> {
+
+    java.util.List<Ruta> findByConductorId(String conductorId);
 }

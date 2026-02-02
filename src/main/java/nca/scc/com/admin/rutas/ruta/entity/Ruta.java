@@ -42,6 +42,8 @@ public class Ruta {
     public void busId(String busId) { this.busId = busId; }
     public String conductorId() { return conductorId; }
     public void conductorId(String conductorId) { this.conductorId = conductorId; }
+    public String getConductorId() { return conductorId; }
+    public void setConductorId(String conductorId) { this.conductorId = conductorId; }
     public String coordinadorId() { return coordinadorId; }
     public void coordinadorId(String coordinadorId) { this.coordinadorId = coordinadorId; }
     public String sedeId() { return sedeId; }

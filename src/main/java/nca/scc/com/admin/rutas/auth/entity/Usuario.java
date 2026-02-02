@@ -24,6 +24,8 @@ public class Usuario {
 
     private String password;
 
+    private String email;
+
     /**
      * Tenant/organización asociada. Para ROLE_TRANSPORT será el id de la empresa de transporte; para ROLE_SCHOOL será el id de la sede/colegio.
      */
@@ -34,6 +36,11 @@ public class Usuario {
      */
     @Enumerated(EnumType.STRING)
     private Role role;
+
+    /**
+     * Id del conductor cuando el usuario tiene rol driver (ROLE_TRANSPORT).
+     */
+    private String conductorId;
 
     public Usuario() {
         this.id = UUID.randomUUID().toString();
@@ -89,6 +96,14 @@ public class Usuario {
         this.password = password;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getTenant() {
         return tenant;
     }
@@ -103,5 +118,13 @@ public class Usuario {
 
     public void setRole(Role role) {
         this.role = role;
+    }
+
+    public String getConductorId() {
+        return conductorId;
+    }
+
+    public void setConductorId(String conductorId) {
+        this.conductorId = conductorId;
     }
 }

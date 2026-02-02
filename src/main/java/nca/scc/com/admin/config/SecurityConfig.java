@@ -139,6 +139,7 @@ public class SecurityConfig {
                     .requestMatchers("/api/realtime/**").authenticated()
                     .requestMatchers("/api/rutas/**").authenticated()
                     .requestMatchers("/api/sedes/**").authenticated()
+                    .requestMatchers("/api/driver/**").authenticated()
                     // Any other request: allow (do not require auth)
                     .anyRequest().permitAll()
                 )
