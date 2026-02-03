@@ -17,8 +17,7 @@ import java.util.Base64;
 public final class AesUtil {
 
     private static final Logger log = LoggerFactory.getLogger(AesUtil.class);
-    private static final String ALG = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH = 128;
+
 
     private AesUtil() {}
 
@@ -31,27 +30,31 @@ public final class AesUtil {
      */
     @Nullable
     public static String decrypt(String base64Ciphertext, String base64Key, String base64Iv) {
-        if (base64Ciphertext == null || base64Ciphertext.isBlank()
-                || base64Key == null || base64Key.isBlank()
-                || base64Iv == null || base64Iv.isBlank()) {
+        if (base64Ciphertext == null || base64Key == null || base64Iv == null) {
             return null;
         }
         try {
-            byte[] key = Base64.getDecoder().decode(base64Key.trim());
-            byte[] iv = Base64.getDecoder().decode(base64Iv.trim());
-            byte[] ciphertext = Base64.getDecoder().decode(base64Ciphertext.trim());
+            byte[] key = Base64.getDecoder().decode(base64Key);
+            byte[] iv = Base64.getDecoder().decode(base64Iv);
+            byte[] ciphertext = Base64.getDecoder().decode(base64Ciphertext);
+
             if (key.length != 32 || iv.length != 12) {
-                log.warn("AES: key must be 32 bytes, iv 12 bytes");
-                return null;
+                throw new IllegalStateException(
+                        "AES-GCM requires 32-byte key and 12-byte IV"
+                );
             }
-            SecretKeySpec spec = new SecretKeySpec(key, "AES");
-            GCMParameterSpec gcm = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-            Cipher cipher = Cipher.getInstance(ALG);
-            cipher.init(Cipher.DECRYPT_MODE, spec, gcm);
-            byte[] plain = cipher.doFinal(ciphertext);
-            return new String(plain, StandardCharsets.UTF_8);
+
+            Cipher cipher = Cipher.getInstance("AES/GCM/NoPadding");
+            cipher.init(
+                    Cipher.DECRYPT_MODE,
+                    new SecretKeySpec(key, "AES"),
+                    new GCMParameterSpec(128, iv)
+            );
+
+            return new String(cipher.doFinal(ciphertext), StandardCharsets.UTF_8);
+
         } catch (Exception e) {
-            log.debug("AES decrypt failed: {}", e.getMessage());
+            log.error("AES decrypt failed", e);
             return null;
         }
     }

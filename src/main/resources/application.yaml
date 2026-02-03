@@ -25,14 +25,14 @@ server:
 app:
   auth:
     # Credenciales cifradas con AES-256. Si no se define, se asumen en claro.
-    aes-base64-key: "QzW9eRt6yU2iO1pA7sD4fG0hJ3kL8zXc"
-    aes-base64-iv: "MjmqhEAOWZJ4Ekde"
+    aes-base64-key: "rH9uRZ4sQKcA3nWn2v8xQ4cYt9ZzF1yB0Lk6xNw7m5E="
+    aes-base64-iv: "MDEyMzQ1Njc4OWFi"
     max-failed-attempts: 5
     failed-attempts-window-minutes: 15
     block-duration-minutes: 30
   cors:
     # Lista separada por comas de orígenes permitidos. Ejemplo local: http://localhost:3000
-    allowed-origins: "http://localhost:3000,http://localhost:8082,https://dd1f27a6-7487-41c1-9e9c-b8f189d3da64.lovableproject.com,https://backadminroute-production.up.railway.app/*,https://id-preview--0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovable.app,https://*.lovable.app,https://lovable.dev/projects/dd1f27a6-7487-41c1-9e9c-b8f189d3da64"
+    allowed-origins: "http://localhost:3000,http://localhost:8082,https://id-preview--dd1f27a6-7487-41c1-9e9c-b8f189d3da64.lovable.app,https://backadminroute-production.up.railway.app/*"
 
 jwt:
   header: Authorization
