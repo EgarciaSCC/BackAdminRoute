@@ -32,7 +32,7 @@ app:
     block-duration-minutes: 30
   cors:
     # Lista separada por comas de orígenes permitidos. Ejemplo local: http://localhost:3000
-    allowed-origins: "https://dd1f27a6-7487-41c1-9e9c-b8f189d3da64.lovableproject.com,https://0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovableproject.com,http://localhost:3000,http://localhost:8082,https://id-preview--dd1f27a6-7487-41c1-9e9c-b8f189d3da64.lovable.app,https://backadminroute-production.up.railway.app/*"
+    allowed-origins: "https://dd1f27a6-7487-41c1-9e9c-b8f189d3da64.lovableproject.com,https://0f8b74e2-5a2a-4a22-a53d-7dd108309e55.lovableproject.com,http://localhost:8082,https://id-preview--dd1f27a6-7487-41c1-9e9c-b8f189d3da64.lovable.app,https://backadminroute-production.up.railway.app/"
 
 jwt:
   header: Authorization
