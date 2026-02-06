@@ -1,57 +1,137 @@
 package nca.scc.com.admin.rutas.pasajero;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import nca.scc.com.admin.rutas.NotFoundException;
 import nca.scc.com.admin.rutas.pasajero.entity.Pasajero;
-import nca.scc.com.admin.security.SecurityUtils;
-import nca.scc.com.admin.rutas.auth.Role;
-import org.springframework.stereotype.Service;
+import nca.scc.com.admin.rutas.TenantContext;
 
 import java.util.List;
 
+/**
+ * Servicio para gestión de Pasajeros/Estudiantes
+ * Responsabilidades:
+ * - CRUD completo con validaciones
+ * - Filtrado automático por tenant
+ * - Validación de matrícula única
+ */
 @Service
 public class PasajeroService {
 
+    private static final Logger log = LoggerFactory.getLogger(PasajeroService.class);
     private final PasajeroRepository repository;
 
     public PasajeroService(PasajeroRepository repository) {
         this.repository = repository;
     }
 
+    /**
+     * Crear nuevo pasajero/estudiante
+     */
     public Pasajero create(Pasajero pasajero) {
-        return repository.save(pasajero);
+        log.debug("Creando pasajero: {}", pasajero.getNombre());
+
+        String tenant = TenantContext.getCurrentTenant();
+        log.debug("Tenant : {}", tenant);
+        // Validar matrícula única
+        repository.findByMatricula(pasajero.getMatricula()).ifPresent(p -> {
+            throw new IllegalArgumentException("Ya existe estudiante con matrícula: " + pasajero.getMatricula());
+        });
+
+        pasajero.setTenant(tenant);
+        Pasajero saved = repository.save(pasajero);
+        log.info("Pasajero creado: {} (ID: {}, Tenant: {})", pasajero.getNombre(), saved.getId(), tenant);
+        return saved;
     }
 
+    /**
+     * Listar pasajeros del tenant actual
+     */
     public List<Pasajero> listAll() {
-        Role role = SecurityUtils.getRoleClaim();
-        String tenant = SecurityUtils.getTenantClaim("tid");
-
-        if (role != null && role == Role.ROLE_TRANSPORT && tenant != null) {
-            return repository.findBySedeTransportId(tenant);
-        } else if (role != null && role == Role.ROLE_SCHOOL && tenant != null) {
-            return repository.findBySedeId(tenant);
-        } else {
-            // Default: return all (could be restricted to admins)
-            return repository.findAll();
-        }
+        String tenant = TenantContext.getCurrentTenant();
+        log.debug("Listando pasajeros para tenant: {}", tenant);
+        return repository.findByTenant(tenant);
     }
 
+    /**
+     * Obtener pasajero por ID (con validación de tenant)
+     */
     public Pasajero getById(String id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Pasajero not found: " + id));
+        String tenant = TenantContext.getCurrentTenant();
+        Pasajero pasajero = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Pasajero no encontrado: " + id));
+
+        if (!pasajero.getTenant().equals(tenant)) {
+            log.warn("Acceso denegado al pasajero {} para tenant {}", id, tenant);
+            throw new NotFoundException("Pasajero no encontrado");
+        }
+        return pasajero;
     }
 
+    /**
+     * Listar pasajeros por sede
+     */
+    public List<Pasajero> listBySedeId(String sedeId) {
+        String tenant = TenantContext.getCurrentTenant();
+        log.debug("Listando pasajeros para sede: {} (tenant: {})", sedeId, tenant);
+        return repository.findBySedeIdAndTenant(sedeId, tenant);
+    }
+
+    /**
+     * Actualizar pasajero
+     */
     public Pasajero update(String id, Pasajero pasajero) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("Pasajero not found: " + id);
+        log.debug("Actualizando pasajero: {}", id);
+
+        Pasajero existing = getById(id);
+
+        // Validar cambio de matrícula
+        if (pasajero.getMatricula() != null && !pasajero.getMatricula().equals(existing.getMatricula())) {
+            repository.findByMatricula(pasajero.getMatricula()).ifPresent(p -> {
+                throw new IllegalArgumentException("Ya existe estudiante con matrícula: " + pasajero.getMatricula());
+            });
         }
-        pasajero.setId(id);
-        return repository.save(pasajero);
+
+        existing.setNombre(pasajero.getNombre());
+        existing.setMatricula(pasajero.getMatricula());
+        existing.setCurso(pasajero.getCurso());
+        existing.setDireccion(pasajero.getDireccion());
+        existing.setBarrio(pasajero.getBarrio());
+        existing.setLat(pasajero.getLat());
+        existing.setLng(pasajero.getLng());
+        existing.setSedeId(pasajero.getSedeId());
+        existing.setPadreId(pasajero.getPadreId());
+        existing.setTelefonoEmergencia(pasajero.getTelefonoEmergencia());
+        existing.setAlergias(pasajero.getAlergias());
+        existing.setNotas(pasajero.getNotas());
+        if (pasajero.getActivo() != null) {
+            existing.setActivo(pasajero.getActivo());
+        }
+
+        Pasajero updated = repository.save(existing);
+        log.info("Pasajero actualizado: {}", id);
+        return updated;
     }
 
+    /**
+     * Eliminar pasajero (soft delete)
+     */
     public void delete(String id) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("Pasajero not found: " + id);
-        }
-        repository.deleteById(id);
+        log.debug("Eliminando pasajero: {}", id);
+        Pasajero pasajero = getById(id);
+        pasajero.setActivo(false);
+        repository.save(pasajero);
+        log.info("Pasajero eliminado (soft delete): {}", id);
+    }
+
+    /**
+     * Listar pasajeros activos
+     */
+    public List<Pasajero> listActivos() {
+        String tenant = TenantContext.getCurrentTenant();
+        log.debug("Listando pasajeros activos para tenant: {}", tenant);
+        return repository.findActivosByTenant(tenant);
     }
 }

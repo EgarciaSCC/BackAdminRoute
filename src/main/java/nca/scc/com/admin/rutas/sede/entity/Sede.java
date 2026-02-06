@@ -1,10 +1,7 @@
 package nca.scc.com.admin.rutas.sede.entity;
 
-import com.fasterxml.jackson.annotation.JsonCreator;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
-import nca.scc.com.admin.rutas.ruta.entity.Ruta;
 
 import java.util.Objects;
 import java.util.UUID;
@@ -18,6 +15,10 @@ public class Sede {
     private String id;
 
     @NotBlank
+    @Column(nullable = false)
+    private String colegioId;
+
+    @NotBlank
     private String nombre;
 
     private String direccion;
@@ -28,22 +29,22 @@ public class Sede {
     // Id de la empresa de transporte (tenant) que administra esta sede en el sistema
     private String transportId;
 
+    // Tenant (propietario de la sede)
+    @NotBlank
+    private String tenant;
+
     public Sede() {}
 
-    @JsonCreator
-    public Sede(
-            @JsonProperty("id") String id,
-            @JsonProperty("nombre") String nombre,
-            @JsonProperty("direccion") String direccion,
-            @JsonProperty("ciudad") String ciudad,
-            @JsonProperty("lat") double lat,
-            @JsonProperty("lng") double lng) {
+    public Sede(String id, String colegioId, String nombre, String direccion,
+                String ciudad, double lat, double lng, String tenant) {
         this.id = id;
+        this.colegioId = colegioId;
         this.nombre = nombre;
         this.direccion = direccion;
         this.ciudad = ciudad;
         this.lat = lat;
         this.lng = lng;
+        this.tenant = tenant;
     }
 
     @PrePersist
@@ -56,6 +57,8 @@ public class Sede {
     // getters & setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    public String getColegioId() { return colegioId; }
+    public void setColegioId(String colegioId) { this.colegioId = colegioId; }
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
     public String direccion() { return direccion; }
@@ -66,9 +69,10 @@ public class Sede {
     public void lat(double lat) { this.lat = lat; }
     public double lng() { return lng; }
     public void lng(double lng) { this.lng = lng; }
-
     public String getTransportId() { return transportId; }
     public void setTransportId(String transportId) { this.transportId = transportId; }
+    public String getTenant() { return tenant; }
+    public void setTenant(String tenant) { this.tenant = tenant; }
 
     @Override
     public boolean equals(Object o) {

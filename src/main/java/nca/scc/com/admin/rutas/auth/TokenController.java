@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import nca.scc.com.admin.rutas.auth.dto.*;
 import nca.scc.com.admin.rutas.auth.entity.Usuario;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/auth")
 public class TokenController {
 
+    private static final Logger log = LoggerFactory.getLogger(TokenController.class);
     private final AuthService authService;
 
     public TokenController(AuthService authService) {
@@ -42,7 +45,8 @@ public class TokenController {
                     .body(new LoginErrorResponse("Usuario o contraseña incorrectos"));
         }
 
-        var maybeUser = authService.findByUsername(username);
+        // Buscar por username O email
+        var maybeUser = authService.findByUsernameOrEmail(username);
         if (maybeUser.isEmpty()) {
             authService.registerFailedAttempt(clientIp);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
@@ -50,7 +54,12 @@ public class TokenController {
         }
 
         Usuario user = maybeUser.get();
+        log.debug("Usuario encontrado: {} - Password hash en BD: {}", user.getUsername(),
+                  user.getPassword() != null ? "EXISTS" : "NULL");
+
         if (!authService.checkPassword(password, user.getPassword())) {
+            log.warn("Password validation failed for user: {} - Hash is null/invalid: {}",
+                     user.getUsername(), user.getPassword() == null);
             authService.registerFailedAttempt(clientIp);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
                     .body(new LoginErrorResponse("Usuario o contraseña incorrectos"));

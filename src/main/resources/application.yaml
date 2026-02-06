@@ -7,20 +7,46 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password: ""
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
 
   jpa:
     database-platform: org.hibernate.dialect.H2Dialect
     hibernate:
       ddl-auto: update
-    show-sql: true
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
 
   h2:
     console:
       enabled: true
       path: /h2-console
 
+  # Redis (desarrollo con valores por defecto)
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    database: 0
+    timeout: 60000ms
+    jedis:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+  # WebSocket
+  websocket:
+    ping-interval: 30000
+    ping-timeout: 10000
+
 server:
   port: 8080
+  servlet:
+    context-path: /
 
 app:
   auth:
@@ -30,16 +56,27 @@ app:
     max-failed-attempts: 5
     failed-attempts-window-minutes: 15
     block-duration-minutes: 30
+
   cors:
     # Lista separada por comas de orígenes permitidos. Ejemplo local: http://localhost:3000
     allowed-origins: "*"
+
+  encryption:
+    key: ${ENCRYPTION_KEY:dev-secret-key-32-bytes-long!!}
+    iv: ${ENCRYPTION_IV:dev-iv-16-bytes!}
+    algorithm: AES_256_GCM
+
+  data-retention:
+    historial-dias: ${DATA_RETENTION_HISTORIAL_DIAS:365}
+    ubicacion-dias: ${DATA_RETENTION_UBICACION_DIAS:7}
+    novedad-dias: ${DATA_RETENTION_NOVEDAD_DIAS:90}
+    logs-dias: ${DATA_RETENTION_LOGS_DIAS:30}
 
 jwt:
   header: Authorization
   auth-prefix: Bearer
   claim-tenant: tid
   # Para desarrollo puede usar un secret (HS256). En producción prefiera jwk-set-uri con RS256.
-  # Valor por defecto para desarrollo local. Puede ser sobrescrito mediante la variable de entorno JWT_SECRET.
   secret: ${JWT_SECRET:dev-secret-please-change-this-to-a-secure-value}
   jwk-set-uri: ${JWT_JWK_SET_URI:}
 
@@ -48,3 +85,29 @@ tenant:
 
 security:
   require-authenticated: true
+
+# Logging
+logging:
+  level:
+    root: INFO
+    nca.scc.com.admin: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/admin.log
+    max-size: 10MB
+    max-history: 30
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+

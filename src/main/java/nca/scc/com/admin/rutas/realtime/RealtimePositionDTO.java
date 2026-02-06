@@ -1,6 +1,7 @@
 package nca.scc.com.admin.rutas.realtime;
 
 public class RealtimePositionDTO {
+    private String rutaId;
     private double lat;
     private double lng;
     private Integer heading;
@@ -19,6 +20,8 @@ public class RealtimePositionDTO {
         this.progress = progress;
     }
 
+    public String getRutaId() { return rutaId; }
+    public void setRutaId(String rutaId) { this.rutaId = rutaId; }
     public double getLat() { return lat; }
     public void setLat(double lat) { this.lat = lat; }
     public double getLng() { return lng; }

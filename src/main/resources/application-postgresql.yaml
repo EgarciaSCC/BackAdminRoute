@@ -1,0 +1,70 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:nca_backend}
+    driver-class-name: org.postgresql.Driver
+    username: ${DB_USER:postgres}
+    password: ${DB_PASSWORD:postgres}
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  # Redis
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    ssl: ${REDIS_SSL:false}
+    timeout: 60000ms
+    jedis:
+      pool:
+        max-active: 16
+        max-idle: 16
+        min-idle: 4
+
+logging:
+  level:
+    root: WARN
+    nca.scc.com.admin: INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+  pattern:
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/admin.log
+    max-size: 50MB
+    max-history: 90
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# Configure AES keys for credential decryption (AES-256-GCM)
+app:
+  auth:
+    aes-base64-key: "rH9uRZ4sQKcA3nWn2v8xQ4cYt9ZzF1yB0Lk6xNw7m5E="
+    aes-base64-iv: "MDEyMzQ1Njc4OWFi"

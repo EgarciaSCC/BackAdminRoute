@@ -30,10 +30,22 @@ public class Conductor {
     @NotBlank
     private String licencia;
 
+    // nuevo campo: tipo de licencia (opcional)
+    @Column(name = "tipo_licencia")
+    private String tipoLicencia;
+
     @NotNull
     private ConductorState estado;
 
-    public Conductor() {}
+    @NotBlank
+    private String tenant;
+
+    private Boolean activo = true;
+
+    public Conductor() {
+        this.id = UUID.randomUUID().toString();
+        this.activo = true;
+    }
 
     @JsonCreator
     public Conductor(
@@ -42,20 +54,17 @@ public class Conductor {
             @JsonProperty("cedula") String cedula,
             @JsonProperty("telefono") String telefono,
             @JsonProperty("licencia") String licencia,
-            @JsonProperty("estado") ConductorState estado) {
+            @JsonProperty("estado") ConductorState estado,
+            @JsonProperty("tenant") String tenant,
+            @JsonProperty("tipoLicencia") String tipoLicencia) {
         this.id = id;
         this.nombre = nombre;
         this.cedula = cedula;
         this.telefono = telefono;
         this.licencia = licencia;
         this.estado = estado;
-    }
-
-    @PrePersist
-    public void ensureId() {
-        if (id == null || id.isBlank()) {
-            id = UUID.randomUUID().toString();
-        }
+        this.tenant = tenant;
+        this.tipoLicencia = tipoLicencia;
     }
 
     // getters & setters
@@ -69,8 +78,14 @@ public class Conductor {
     public void setTelefono(String telefono) { this.telefono = telefono; }
     public String getLicencia() { return licencia; }
     public void setLicencia(String licencia) { this.licencia = licencia; }
+    public String getTipoLicencia() { return tipoLicencia; }
+    public void setTipoLicencia(String tipoLicencia) { this.tipoLicencia = tipoLicencia; }
     public ConductorState getEstado() { return estado; }
     public void setEstado(ConductorState estado) { this.estado = estado; }
+    public String getTenant() { return tenant; }
+    public void setTenant(String tenant) { this.tenant = tenant; }
+    public Boolean getActivo() { return activo; }
+    public void setActivo(Boolean activo) { this.activo = activo; }
 
     @Override
     public boolean equals(Object o) {

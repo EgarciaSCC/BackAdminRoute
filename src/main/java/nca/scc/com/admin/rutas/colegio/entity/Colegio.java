@@ -1,4 +1,4 @@
-package nca.scc.com.admin.rutas.conductor.entity;
+package nca.scc.com.admin.rutas.colegio.entity;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
@@ -6,128 +6,113 @@ import jakarta.persistence.*;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import nca.scc.com.admin.rutas.conductor.entity.enums.ConductorState;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
 import java.util.UUID;
 
-/**
- * Entidad Conductor - Operador de rutas escolares
- *
- * Campos sensibles (encriptables): cedula, telefono, licencia
- * Aislamiento por tenant automático
- * Estados: disponible, asignado, inactivo
- */
 @Entity
-@Table(name = "conductor", indexes = {
-        @Index(name = "idx_conductor_cedula", columnList = "cedula"),
-        @Index(name = "idx_conductor_licencia", columnList = "licencia"),
-        @Index(name = "idx_conductor_tenant", columnList = "tenant")
+@Table(name = "colegio", indexes = {
+        @Index(name = "idx_colegio_nit", columnList = "nit"),
+        @Index(name = "idx_colegio_tenant", columnList = "tenant")
 })
-public class Conductor {
-
+public class Colegio {
     @Id
     @Column(length = 36)
     private String id;
 
-    @NotBlank(message = "El nombre del conductor es requerido")
-    @Column(nullable = false)
+    @NotBlank
+    @Column(unique = true, nullable = false, length = 30)
+    private String nit;
+
+    @NotBlank
     private String nombre;
 
-    @NotBlank(message = "La cédula es requerida")
-    @Column(unique = true, nullable = false)
-    private String cedula;
+    private String direccion;
+    private String ciudad;
+    private String contacto;
 
-    @NotBlank(message = "El teléfono es requerido")
-    @Column(nullable = false)
-    private String telefono;
+    @Email
+    private String email;
 
-    @NotBlank(message = "El número de licencia es requerido")
-    @Column(unique = true, nullable = false)
-    private String licencia;
-
-    private String tipoLicencia; // A, B, C, etc
-
-    @NotNull(message = "El estado es requerido")
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private ConductorState estado;
-
-    @Column(nullable = false)
+    @NotBlank
     private String tenant;
 
-    @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    @Column(name = "logo_url")
+    private String logoUrl;
 
-    @Column(name = "updated_at")
+    private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
+    @NotNull
     @Column(nullable = false)
     private Boolean activo = true;
 
-    public Conductor() {
+    public Colegio() {
         this.id = UUID.randomUUID().toString();
         this.activo = true;
-        this.estado = ConductorState.disponible;
     }
 
     @JsonCreator
-    public Conductor(
+    public Colegio(
             @JsonProperty("id") String id,
+            @JsonProperty("nit") String nit,
             @JsonProperty("nombre") String nombre,
-            @JsonProperty("cedula") String cedula,
-            @JsonProperty("telefono") String telefono,
-            @JsonProperty("licencia") String licencia,
-            @JsonProperty("tipoLicencia") String tipoLicencia,
-            @JsonProperty("estado") ConductorState estado,
-            @JsonProperty("tenant") String tenant) {
+            @JsonProperty("direccion") String direccion,
+            @JsonProperty("ciudad") String ciudad,
+            @JsonProperty("contacto") String contacto,
+            @JsonProperty("email") String email,
+            @JsonProperty("tenant") String tenant,
+            @JsonProperty("logoUrl") String logoUrl) {
         this.id = id != null ? id : UUID.randomUUID().toString();
+        this.nit = nit;
         this.nombre = nombre;
-        this.cedula = cedula;
-        this.telefono = telefono;
-        this.licencia = licencia;
-        this.tipoLicencia = tipoLicencia;
-        this.estado = estado != null ? estado : ConductorState.disponible;
+        this.direccion = direccion;
+        this.ciudad = ciudad;
+        this.contacto = contacto;
+        this.email = email;
         this.tenant = tenant;
+        this.logoUrl = logoUrl;
         this.activo = true;
     }
 
     @PrePersist
-    public void ensureIdAndTimestamp() {
-        if (this.id == null || this.id.isBlank()) {
-            this.id = UUID.randomUUID().toString();
+    public void ensureId() {
+        if (id == null || id.isBlank()) {
+            id = UUID.randomUUID().toString();
         }
-        if (this.createdAt == null) {
-            this.createdAt = LocalDateTime.now();
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
         }
-        if (this.estado == null) {
-            this.estado = ConductorState.disponible;
+        if (updatedAt == null) {
+            updatedAt = LocalDateTime.now();
         }
     }
 
     @PreUpdate
     public void updateTimestamp() {
-        this.updatedAt = LocalDateTime.now();
+        updatedAt = LocalDateTime.now();
     }
 
-    // ...existing code...
+    // getters & setters
     public String getId() { return id; }
     public void setId(String id) { this.id = id; }
+    public String getNit() { return nit; }
+    public void setNit(String nit) { this.nit = nit; }
     public String getNombre() { return nombre; }
     public void setNombre(String nombre) { this.nombre = nombre; }
-    public String getCedula() { return cedula; }
-    public void setCedula(String cedula) { this.cedula = cedula; }
-    public String getTelefono() { return telefono; }
-    public void setTelefono(String telefono) { this.telefono = telefono; }
-    public String getLicencia() { return licencia; }
-    public void setLicencia(String licencia) { this.licencia = licencia; }
-    public String getTipoLicencia() { return tipoLicencia; }
-    public void setTipoLicencia(String tipoLicencia) { this.tipoLicencia = tipoLicencia; }
-    public ConductorState getEstado() { return estado; }
-    public void setEstado(ConductorState estado) { this.estado = estado; }
+    public String getDireccion() { return direccion; }
+    public void setDireccion(String direccion) { this.direccion = direccion; }
+    public String getCiudad() { return ciudad; }
+    public void setCiudad(String ciudad) { this.ciudad = ciudad; }
+    public String getContacto() { return contacto; }
+    public void setContacto(String contacto) { this.contacto = contacto; }
+    public String getEmail() { return email; }
+    public void setEmail(String email) { this.email = email; }
     public String getTenant() { return tenant; }
     public void setTenant(String tenant) { this.tenant = tenant; }
+    public String getLogoUrl() { return logoUrl; }
+    public void setLogoUrl(String logoUrl) { this.logoUrl = logoUrl; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
     public LocalDateTime getUpdatedAt() { return updatedAt; }
@@ -138,22 +123,12 @@ public class Conductor {
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;
-        if (!(o instanceof Conductor)) return false;
-        return Objects.equals(id, ((Conductor) o).id);
+        if (!(o instanceof Colegio)) return false;
+        return Objects.equals(id, ((Colegio) o).id);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(id);
-    }
-
-    @Override
-    public String toString() {
-        return "Conductor{" +
-                "id='" + id + '\'' +
-                ", nombre='" + nombre + '\'' +
-                ", estado=" + estado +
-                ", activo=" + activo +
-                '}';
     }
 }
