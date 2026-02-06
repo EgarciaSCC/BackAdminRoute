@@ -57,7 +57,7 @@ public class Conductor {
             @JsonProperty("estado") ConductorState estado,
             @JsonProperty("tenant") String tenant,
             @JsonProperty("tipoLicencia") String tipoLicencia) {
-        this.id = id;
+        this.id = (id == null || id.isBlank()) ? UUID.randomUUID().toString() : id;
         this.nombre = nombre;
         this.cedula = cedula;
         this.telefono = telefono;
@@ -65,6 +65,7 @@ public class Conductor {
         this.estado = estado;
         this.tenant = tenant;
         this.tipoLicencia = tipoLicencia;
+        this.activo = true;
     }
 
     // getters & setters

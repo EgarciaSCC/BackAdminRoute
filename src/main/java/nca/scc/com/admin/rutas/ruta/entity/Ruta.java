@@ -5,6 +5,7 @@ import nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 
 @Entity
 @Table(name = "ruta")
@@ -48,6 +49,20 @@ public class Ruta {
 
     @Column(name = "tenant")
     private String tenant;
+
+    // Constructor sin parámetros para JPA
+    public Ruta() {
+        this.id = UUID.randomUUID().toString();
+        this.capacidadActual = 0;
+    }
+
+    // Hook para asegurar que siempre hay un ID antes de persistir
+    @PrePersist
+    public void ensureId() {
+        if (this.id == null || this.id.isBlank()) {
+            this.id = UUID.randomUUID().toString();
+        }
+    }
 
     // getters & setters (standard)
     public String getId() { return id; }
