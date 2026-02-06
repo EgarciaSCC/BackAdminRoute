@@ -1,5 +1,10 @@
 package nca.scc.com.admin.rutas.realtime;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import nca.scc.com.admin.rutas.ruta.RutaRepository;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
 import nca.scc.com.admin.rutas.sede.SedeRepository;
@@ -24,6 +29,7 @@ import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/realtime")
+@Tag(name = "Realtime", description = "Real-time position tracking and GeoJSON features")
 public class RealtimeController {
 
     private final RutaRepository rutaRepository;
@@ -39,6 +45,8 @@ public class RealtimeController {
     }
 
     @GetMapping("/positions")
+    @Operation(summary = "Get current positions", description = "Retrieve real-time positions for all routes accessible to the user")
+    @ApiResponse(responseCode = "200", description = "Success", content = @Content(schema = @Schema(type = "object")))
     public Map<String, Object> positions() {
         Role role = SecurityUtils.getRoleClaim();
         String tenant = SecurityUtils.getTenantClaim("tid");
@@ -73,6 +81,9 @@ public class RealtimeController {
 
     // Endpoint para que la app de conductor publique su posición actual (compatibilidad existente)
     @PostMapping("/positions")
+    @Operation(summary = "Post position", description = "Publish current position for a route")
+    @ApiResponse(responseCode = "201", description = "Position created")
+    @ApiResponse(responseCode = "400", description = "Invalid payload")
     public ResponseEntity<?> postPosition(@RequestBody RealtimePositionDTO dto) {
         // El DTO debe contener rutaId, lat, lng, heading, speed
         if (dto == null) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing body");
@@ -116,6 +127,9 @@ public class RealtimeController {
      * }
      */
     @PostMapping("/positions/feature")
+    @Operation(summary = "Post GeoJSON feature position", description = "Publish a GeoJSON Feature with position data")
+    @ApiResponse(responseCode = "201", description = "Feature processed")
+    @ApiResponse(responseCode = "400", description = "Invalid GeoJSON feature")
     public ResponseEntity<?> postFeaturePosition(@RequestBody Map<String, Object> feature) {
         if (feature == null) return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Missing body");
         Object geometryObj = feature.get("geometry");
@@ -173,6 +187,8 @@ public class RealtimeController {
      * Esto deja el payload listo para renderizar en Mapbox en la UI de padres/admins.
      */
     @GetMapping("/positions/geojson")
+    @Operation(summary = "Get GeoJSON FeatureCollection", description = "Retrieve positions as GeoJSON FeatureCollection")
+    @ApiResponse(responseCode = "200", description = "GeoJSON FeatureCollection", content = @Content(schema = @Schema(type = "object")))
     public Map<String, Object> positionsGeoJson() {
         Map<String, Object> base = positions();
         @SuppressWarnings("unchecked")

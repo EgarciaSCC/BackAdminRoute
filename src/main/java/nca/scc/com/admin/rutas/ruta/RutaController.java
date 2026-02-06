@@ -1,5 +1,10 @@
 package nca.scc.com.admin.rutas.ruta;
 
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import nca.scc.com.admin.rutas.ruta.dto.RutaResponseDTO;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
@@ -11,6 +16,7 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/rutas")
+@Tag(name = "Rutas", description = "Routes management")
 public class RutaController {
 
     private final RutaService service;
@@ -21,33 +27,45 @@ public class RutaController {
 
     // Devuelve DTOs completos con relaciones
     @GetMapping
+    @Operation(summary = "List all routes", description = "Retrieve all routes with full details")
+    @ApiResponse(responseCode = "200", description = "List of routes")
     public List<RutaResponseDTO> list() {
         return service.listAllFull();
     }
 
     @GetMapping("/estado/{estado}")
+    @Operation(summary = "List routes by status", description = "Filter routes by their status")
+    @ApiResponse(responseCode = "200", description = "Filtered routes")
     public List<RutaResponseDTO> listByEstado(@PathVariable String estado) {
         return service.listAllFull().stream().filter(r -> r.getRuta().getEstado() != null && r.getRuta().getEstado().equalsIgnoreCase(estado)).toList();
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get route by ID", description = "Retrieve a specific route with full details")
+    @ApiResponse(responseCode = "200", description = "Route details")
     public RutaResponseDTO get(@PathVariable String id) {
         return service.getFullById(id);
     }
 
     // Endpoints para compatibilidad: crear/actualizar la entidad Ruta sin resolver relaciones
     @PostMapping
+    @Operation(summary = "Create route", description = "Create a new route")
+    @ApiResponse(responseCode = "201", description = "Route created")
     public ResponseEntity<Ruta> create(@Valid @RequestBody Ruta ruta) {
         Ruta created = service.create(ruta);
         return ResponseEntity.status(HttpStatus.CREATED).body(created);
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Update route", description = "Update an existing route")
+    @ApiResponse(responseCode = "200", description = "Route updated")
     public Ruta update(@PathVariable String id, @Valid @RequestBody Ruta ruta) {
         return service.update(id, ruta);
     }
 
     @PostMapping("/{id}/publish")
+    @Operation(summary = "Publish route", description = "Publish a route")
+    @ApiResponse(responseCode = "200", description = "Route published")
     public ResponseEntity<Ruta> publish(@PathVariable String id) {
         Ruta published = service.publish(id);
         return ResponseEntity.ok(published);
