@@ -382,6 +382,121 @@ public class SeedData implements CommandLineRunner {
         HistorialRuta savedHistorial = historialRutaRepository.save(historial);
         log.info("✅ Historial creado para hoy: {}", savedHistorial.getId());
 
+        // ========== CREAR SEGUNDA SEDE: COLEGIO SAN JOSÉ EN BARRANQUILLA ==========
+        Sede sedeSanJose = new Sede(
+                null,
+                savedColegio.getId(),
+                "Colegio San José - Barranquilla",
+                "Carrera 45 # 72-15",
+                "Barranquilla",
+                10.9905,   // Latitud Barranquilla
+                -74.7975,  // Longitud Barranquilla
+                transport1
+        );
+        sedeSanJose.setTransportId(transport1);
+        Sede savedSedeSanJose = sedeRepository.save(sedeSanJose);
+        log.info("✅ Sede San José Barranquilla creada: {}", savedSedeSanJose.getId());
+
+        // ========== CREAR ESTUDIANTES PARA RUTA SAN JOSÉ ==========
+        // Estudiantes en diferentes paradas del barrio
+        Pasajero estSJ1 = new Pasajero(
+                null,
+                "Miguel Ángel Vélez",
+                "MAT-2026-SJ001",
+                "3ro Primaria",
+                "Carrera 42 #71-20, Barranquilla",
+                "Prado",
+                10.9915,
+                -74.7985,
+                savedSedeSanJose.getId(),
+                null,
+                transport1
+        );
+
+        Pasajero estSJ2 = new Pasajero(
+                null,
+                "Isabella Martínez",
+                "MAT-2026-SJ002",
+                "4to Primaria",
+                "Carrera 48 #73-40, Barranquilla",
+                "El Prado",
+                10.9925,
+                -74.7965,
+                savedSedeSanJose.getId(),
+                null,
+                transport1
+        );
+
+        Pasajero estSJ3 = new Pasajero(
+                null,
+                "Andrés Felipe López",
+                "MAT-2026-SJ003",
+                "5to Primaria",
+                "Carrera 51 #75-30, Barranquilla",
+                "San Alejo",
+                10.9935,
+                -74.7955,
+                savedSedeSanJose.getId(),
+                null,
+                transport1
+        );
+
+        Pasajero estSJ4 = new Pasajero(
+                null,
+                "Valentina Rodríguez",
+                "MAT-2026-SJ004",
+                "6to Primaria",
+                "Carrera 55 #77-50, Barranquilla",
+                "Murillo",
+                10.9945,
+                -74.7945,
+                savedSedeSanJose.getId(),
+                null,
+                transport1
+        );
+
+        List<Pasajero> estudiantesSJ = List.of(estSJ1, estSJ2, estSJ3, estSJ4);
+        List<Pasajero> savedEstudiantesSJ = pasajeroRepository.saveAll(estudiantesSJ);
+        log.info("✅ {} estudiantes San José creados", savedEstudiantesSJ.size());
+
+        // ========== CREAR RUTA PROGRAMADA CON 5 PARADAS ==========
+        LocalDateTime rutaSJStart = now.plusMinutes(30);
+        LocalDateTime rutaSJEnd = rutaSJStart.plusHours(2);
+
+        Ruta rutaSanJose = new Ruta();
+        rutaSanJose.setNombre("RUTA BARRANQUILLA - RECOGIDA TARDE");
+        rutaSanJose.busId(savedBus.getId());
+        rutaSanJose.conductorId(savedConductor.getId());  // ✅ Conductor Juan Pérez
+        rutaSanJose.coordinadorId(savedCoordinador.getId());  // ✅ Coordinadora María López
+        rutaSanJose.sedeId(savedSedeSanJose.getId());
+        rutaSanJose.setTenant(transport1);
+        rutaSanJose.setEstudiantes(List.of(
+                estSJ1.getId(),
+                estSJ2.getId(),
+                estSJ3.getId(),
+                estSJ4.getId()
+        ));
+
+        // Configurar como ruta programada (PROGRAMMED en lugar de ACTIVE)
+        rutaSanJose.setTipoRuta(nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta.RECOGIDA);
+        rutaSanJose.setEstado("PROGRAMMED");  // Estado programada, no activa
+
+        // Guardar horas de inicio y fin
+        rutaSanJose.setHoraInicio(String.format("%02d:%02d", rutaSJStart.getHour(), rutaSJStart.getMinute()));
+        rutaSanJose.setHoraFin(String.format("%02d:%02d", rutaSJEnd.getHour(), rutaSJEnd.getMinute()));
+
+        Ruta savedRutaSanJose = rutaRepository.save(rutaSanJose);
+        log.info("✅ Ruta SAN JOSÉ Programada creada: {} (Estado: PROGRAMMED)", savedRutaSanJose.getId());
+        log.info("   📍 Parada 1 (Inicio): Colegio San José - Carrera 45 #72-15");
+        log.info("   📍 Parada 2: Prado - Carrera 42 #71-20 (1 estudiante: Miguel)");
+        log.info("   📍 Parada 3: El Prado - Carrera 48 #73-40 (1 estudiante: Isabella)");
+        log.info("   📍 Parada 4: San Alejo - Carrera 51 #75-30 (1 estudiante: Andrés)");
+        log.info("   📍 Parada 5: Murillo - Carrera 55 #77-50 (1 estudiante: Valentina)");
+        log.info("   📍 Parada 6 (Final): Retorno a Colegio San José");
+        log.info("   👨‍✈️  Conductor: Juan Pérez García");
+        log.info("   👩‍✈️  Coordinadora: María López García");
+        log.info("   ⏰ Hora Inicio: {} | Fin: {}", rutaSanJose.getHoraInicio(), rutaSanJose.getHoraFin());
+
         // ========== CREAR USUARIOS PARA CONDUCTOR Y COORDINADOR ==========
         String conductorPassword = "conductor123";
         String coordinadorPassword = "coordinador123";
@@ -485,57 +600,57 @@ public class SeedData implements CommandLineRunner {
         novedadRepository.save(novedad);
         log.info("✅ Novedad creada");
 
-        log.info("\n╔════════════════════════════════════════════════════════════════════════╗");
-        log.info("║                    SEED DATA COMPLETADO                               ║");
-        log.info("║                                                                        ║");
-        log.info("║  🚌 RUTA COMPLETA PARA PRUEBAS                                        ║");
-        log.info("║  ────────────────────────────────────────────────────────────────────  ║");
-        log.info("║  📍 Ruta ID: {}                                       ║", savedRuta.getId());
-        log.info("║  👨‍✈️  Conductor: Juan Pérez García (ASIGNADO)                         ║");
-        log.info("║  👩‍✈️  Coordinador: María López García (ASIGNADO)                      ║");
-        log.info("║  🚌 Bus: ABC-001 (40 estudiantes)                                     ║");
-        log.info("║  🏫 Sede: Sede Principal                                               ║");
-        log.info("║                                                                        ║");
-        log.info("║  PARADAS:                                                              ║");
-        log.info("║  1. Sede Principal (partida)                                          ║");
-        log.info("║  2. Cra 5 #10-25 (1 estudiante: Carlos)                               ║");
-        log.info("║  3. Cra 6 #12-30 (2 estudiantes: Ana, Pedro)                         ║");
-        log.info("║  4. Cra 8 #15-40 (3 estudiantes: Lucía, Diego, Sofía)               ║");
-        log.info("║  5. Retorno a Sede Principal                                          ║");
-        log.info("║                                                                        ║");
-        log.info("║  👨‍👧‍👦 PADRES CON ACCESO (LOGIN):                                         ║");
-        log.info("║  padre_roberto / padre123 (Carlos)                                    ║");
-        log.info("║  padre_francisco / padre123 (Ana, Pedro)                              ║");
-        log.info("║  padre_patricia / padre123 (Lucía, Diego)                             ║");
-        log.info("║  padre_gustavo / padre123 (Sofía)                                     ║");
-        log.info("║                                                                        ║");
-        log.info("║  🚗 CONDUCTOR Y COORDINADOR (LOGIN):                                  ║");
-        log.info("║  👨‍✈️  conductor.juan / conductor123 (ROLE_TRANSPORT) - RUTA ASIGNADA  ║");
-        log.info("║  👩‍✈️  coordinador.maria / coordinador123 (ROLE_TRANSPORT) - RUTA ASIGNADA ║");
-        log.info("║                                                                        ║");
-        log.info("║  🔐 ADMIN USERS (LOGIN):                                               ║");
-        log.info("║  admin / admin123 (ROLE_ADMIN)                                         ║");
-        log.info("║  admin.transport / admin123 (ROLE_TRANSPORT)                           ║");
-        log.info("║  admin.colegio / admin123 (ROLE_SCHOOL)                              ║");
-        log.info("║                                                                        ║");
-        log.info("║  ⏰ HORARIO:                                                           ║");
-        log.info("║  Inicio: {} (+30 min desde ahora)                  ║", ruta.getHoraInicio());
-        log.info("║  Fin: {}                                          ║", ruta.getHoraFin());
-        log.info("║                                                                        ║");
-        log.info("║  📱 FUNCIONALIDADES DISPONIBLES (CONDUCTOR/COORDINADOR):              ║");
-        log.info("║  ✓ Ver rutas asignadas para hoy: GET /api/rutas/today                ║");
-        log.info("║  ✓ Ver rutas programadas                                               ║");
-        log.info("║  ✓ Ver rutas completadas                                               ║");
-        log.info("║  ✓ Ver información completa de ruta                                    ║");
-        log.info("║  ✓ Ver bus asignado                                                    ║");
-        log.info("║  ✓ Ver coordinador/conductor asignado                                 ║");
-        log.info("║  ✓ Ver paradas y estudiantes a recoger/dejar                          ║");
-        log.info("║  ✓ Reportar recogida/no abordaje durante ruta                         ║");
-        log.info("║  ✓ Reportar novedades durante la ruta                                 ║");
-        log.info("║  ✓ Generar reporte final post-completar ruta                          ║");
-        log.info("║                                                                        ║");
-        log.info("║  🧪 READY FOR TESTING                                                ║");
-        log.info("╚════════════════════════════════════════════════════════════════════════╝\n");
+        log.info("\n╔════════════════════════════════════════════════════════════════════════════════════╗");
+        log.info("║                    ✅ SEED DATA COMPLETADO - 2 RUTAS CREADAS                      ║");
+        log.info("║                                                                                    ║");
+        log.info("║  📍 RUTA 1: RECOGIDA MATINAL (Estado: ACTIVE)                                     ║");
+        log.info("║  ════════════════════════════════════════════════════════════════════════════     ║");
+        log.info("║  ID: {}                                              ║", savedRuta.getId());
+        log.info("║  Sede: Sede Principal (Bogotá)  |  Estudiantes: 6                                ║");
+        log.info("║  Horario: {} a {}                                                   ║", ruta.getHoraInicio(), ruta.getHoraFin());
+        log.info("║  Paradas: 5 (1 inicio + 3 intermedias + 1 final)                                 ║");
+        log.info("║                                                                                    ║");
+        log.info("║  📍 RUTA 2: RUTA BARRANQUILLA - RECOGIDA TARDE (Estado: PROGRAMMED)              ║");
+        log.info("║  ════════════════════════════════════════════════════════════════════════════     ║");
+        log.info("║  ID: {}                                        ║", savedRutaSanJose.getId());
+        log.info("║  Sede: Colegio San José (Barranquilla)  |  Estudiantes: 4                        ║");
+        log.info("║  Horario: {} a {}                                                   ║", rutaSanJose.getHoraInicio(), rutaSanJose.getHoraFin());
+        log.info("║  Paradas: 6 (1 inicio + 4 intermedias + 1 final) ← TESTING CON 5 PARADAS         ║");
+        log.info("║                                                                                    ║");
+        log.info("║  👨‍✈️  CONDUCTOR:                                                                  ║");
+        log.info("║     Nombre: Juan Pérez García                                                     ║");
+        log.info("║     Usuario: conductor.juan  |  Contraseña: conductor123                          ║");
+        log.info("║     Acceso: Ambas rutas asignadas                                                 ║");
+        log.info("║                                                                                    ║");
+        log.info("║  👩‍✈️  COORDINADORA:                                                               ║");
+        log.info("║     Nombre: María López García                                                    ║");
+        log.info("║     Usuario: coordinador.maria  |  Contraseña: coordinador123                     ║");
+        log.info("║     Acceso: Ambas rutas asignadas                                                 ║");
+        log.info("║                                                                                    ║");
+        log.info("║  🔐 ADMIN USERS:                                                                  ║");
+        log.info("║     admin / admin123 (ROLE_ADMIN)                                                 ║");
+        log.info("║     admin.transport / admin123 (ROLE_TRANSPORT)                                   ║");
+        log.info("║     admin.colegio / admin123 (ROLE_SCHOOL)                                       ║");
+        log.info("║                                                                                    ║");
+        log.info("║  👨‍👧‍👦 PADRES (ROLE_SCHOOL):                                                         ║");
+        log.info("║     padre_roberto / padre123  →  Carlos                                           ║");
+        log.info("║     padre_francisco / padre123  →  Ana, Pedro                                     ║");
+        log.info("║     padre_patricia / padre123  →  Lucía, Diego                                    ║");
+        log.info("║     padre_gustavo / padre123  →  Sofía                                            ║");
+        log.info("║                                                                                    ║");
+        log.info("║  🧪 TESTING SUGERIDO:                                                             ║");
+        log.info("║     ✓ GET /api/driver/routes/today - Ver rutas asignadas                         ║");
+        log.info("║     ✓ GET /api/driver/routes/{id} - Ver detalle de ruta                          ║");
+        log.info("║     ✓ POST /reportar-recogida - Registrar recogida de estudiante                 ║");
+        log.info("║     ✓ POST /reportar-no-abordaje - Reportar no abordaje                          ║");
+        log.info("║     ✓ POST /reportar-novedad - Crear novedad predefinida o libre                 ║");
+        log.info("║     ✓ POST /completar-ruta - Finalizar recorrido y generar reporte              ║");
+        log.info("║                                                                                    ║");
+        log.info("║  ⚡ REGENERACIÓN: Ambas rutas se crean con HORA ACTUAL + 30 MIN cada startup    ║");
+        log.info("║     Permite testing continuo sin modificar datos                                  ║");
+        log.info("║                                                                                    ║");
+        log.info("║  ✅ SISTEMA LISTO PARA PRUEBAS DE RECORRIDO Y FUNCIONALIDADES                    ║");
+        log.info("╚════════════════════════════════════════════════════════════════════════════════════╝\n");
     }
 
     /**
