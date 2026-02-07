@@ -42,6 +42,10 @@ public class Usuario {
      * Id del conductor cuando el usuario tiene rol driver (ROLE_TRANSPORT).
      */
     private String conductorId;
+    /**
+     * Id del coordinador cuando el usuario tiene rol driver (ROLE_TRANSPORT).
+     */
+    private String coordinadorId;
 
     public Usuario() {
         this.id = UUID.randomUUID().toString();
@@ -127,5 +131,13 @@ public class Usuario {
 
     public void setConductorId(String conductorId) {
         this.conductorId = conductorId;
+    }
+
+    public String getCoordinadorId() {
+        return coordinadorId;
+    }
+
+    public void setCoordinadorId(String coordinadorId) {
+        this.coordinadorId = coordinadorId;
     }
 }

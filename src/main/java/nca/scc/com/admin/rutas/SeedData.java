@@ -131,7 +131,8 @@ public class SeedData implements CommandLineRunner {
         Bus savedBus = busRepository.save(bus);
         log.info("✅ Bus creado: {}", savedBus.getId());
 
-        // ========== CREAR CONDUCTOR ==========
+        // ========== CREAR CONDUCTORES ==========
+        // Conductor principal que verá las rutas asignadas
         Conductor conductor = new Conductor(
                 null,
                 "Juan Pérez García",
@@ -144,6 +145,20 @@ public class SeedData implements CommandLineRunner {
         );
         Conductor savedConductor = conductorRepository.save(conductor);
         log.info("✅ Conductor creado: {}", savedConductor.getId());
+
+        // Conductor 2: Admin Transporte (para que admin.transport vea rutas asignadas en today)
+        Conductor conductorAdmin = new Conductor(
+                null,
+                "Admin Transporte Conductor",
+                "CC",
+                "1088654321",
+                "LIC-2025-ADMIN",
+                ConductorState.disponible,
+                defaultTenant,
+                "A1"
+        );
+        Conductor savedConductorAdmin = conductorRepository.save(conductorAdmin);
+        log.info("✅ Conductor 2 (Admin) creado: {}", savedConductorAdmin.getId());
 
         // ========== CREAR COORDINADOR ==========
         Coordinador coordinador = new Coordinador(
@@ -325,7 +340,7 @@ public class SeedData implements CommandLineRunner {
         Ruta ruta = new Ruta();
         ruta.setNombre("RECOGIDA MATINAL - Hoy");
         ruta.busId(savedBus.getId());
-        ruta.conductorId(savedConductor.getId());
+        ruta.conductorId(savedConductor.getId());  // ✅ Asignar al conductor principal Juan Pérez García
         ruta.coordinadorId(savedCoordinador.getId());
         ruta.sedeId(savedSede.getId());
         ruta.setTenant(transport1);
@@ -347,7 +362,7 @@ public class SeedData implements CommandLineRunner {
         ruta.setHoraFin(String.format("%02d:%02d", rutaEnd.getHour(), rutaEnd.getMinute()));
 
         Ruta savedRuta = rutaRepository.save(ruta);
-        log.info("✅ Ruta creada: {} (Hora inicio: {}, Fin: {})",
+        log.info("✅ Ruta creada: {} (Asignada a conductor: Juan Pérez García y coordinador: María López) (Hora inicio: {}, Fin: {})",
                  savedRuta.getId(),
                  ruta.getHoraInicio(),
                  ruta.getHoraFin());
@@ -366,6 +381,43 @@ public class SeedData implements CommandLineRunner {
 
         HistorialRuta savedHistorial = historialRutaRepository.save(historial);
         log.info("✅ Historial creado para hoy: {}", savedHistorial.getId());
+
+        // ========== CREAR USUARIOS PARA CONDUCTOR Y COORDINADOR ==========
+        String conductorPassword = "conductor123";
+        String coordinadorPassword = "coordinador123";
+
+        // CVE-2025-22228: Validar longitud máxima de contraseña (BCrypt límite: 72 caracteres)
+        validatePasswordLength(conductorPassword);
+        validatePasswordLength(coordinadorPassword);
+
+        String conductorPass = BCrypt.hashpw(conductorPassword, BCrypt.gensalt());
+        String coordinadorPass = BCrypt.hashpw(coordinadorPassword, BCrypt.gensalt());
+
+        // Crear usuario para el conductor
+        Usuario usuarioConductor = new Usuario(
+                "Juan Pérez García",
+                "conductor.juan",
+                conductorPass,
+                transport1,
+                Role.ROLE_TRANSPORT
+        );
+        usuarioConductor.setEmail("conductor.juan@example.com");
+        usuarioConductor.setConductorId(savedConductor.getId());
+        Usuario savedUsuarioConductor = usuarioRepository.save(usuarioConductor);
+        log.info("✅ Usuario Conductor creado - Username: conductor.juan - Password: {}", conductorPassword);
+
+        // Crear usuario para el coordinador
+        Usuario usuarioCoordinador = new Usuario(
+                "María López García",
+                "coordinador.maria",
+                coordinadorPass,
+                transport1,
+                Role.ROLE_TRANSPORT
+        );
+        usuarioCoordinador.setEmail("coordinador.maria@example.com");
+        usuarioCoordinador.setCoordinadorId(savedCoordinador.getId());
+        Usuario savedUsuarioCoordinador = usuarioRepository.save(usuarioCoordinador);
+        log.info("✅ Usuario Coordinador creado - Username: coordinador.maria - Password: {}", coordinadorPassword);
 
         // ========== CREAR USUARIOS DE ADMIN ==========
         String plainPassword = "admin123";
@@ -390,9 +442,9 @@ public class SeedData implements CommandLineRunner {
                 Role.ROLE_TRANSPORT
         );
         adminTransport.setEmail("admin.transport@example.com");
-        adminTransport.setConductorId(savedConductor.getId());
+        adminTransport.setConductorId(savedConductorAdmin.getId());  // ✅ Vinculado al conductor admin
         usuarioRepository.save(adminTransport);
-        log.info("✅ Admin Transporte creado");
+        log.info("✅ Admin Transporte creado (vinculado a conductor admin)");
 
         // Admin de sede/colegio
         Usuario adminSede = new Usuario(
@@ -433,40 +485,57 @@ public class SeedData implements CommandLineRunner {
         novedadRepository.save(novedad);
         log.info("✅ Novedad creada");
 
-        log.info("\n╔════════════════════════════════════════════════════════════╗");
-        log.info("║                 SEED DATA COMPLETADO                        ║");
-        log.info("║                                                              ║");
-        log.info("║  🚌 RUTA COMPLETA PARA PRUEBAS                             ║");
-        log.info("║  ────────────────────────────────────────────────────────   ║");
-        log.info("║  📍 Ruta ID: {}                              ║", savedRuta.getId());
-        log.info("║  👨‍✈️  Conductor: Juan Pérez García                           ║");
-        log.info("║  🚌 Bus: RECOGIDA-001 (40 estudiantes)                     ║");
-        log.info("║  🏫 Sede: Sede Principal                                    ║");
-        log.info("║                                                              ║");
-        log.info("║  PARADAS:                                                   ║");
-        log.info("║  1. Sede Principal (partida)                               ║");
-        log.info("║  2. Cra 5 #10-25 (1 estudiante: Carlos)                    ║");
-        log.info("║  3. Cra 6 #12-30 (2 estudiantes: Ana, Pedro)              ║");
-        log.info("║  4. Cra 8 #15-40 (3 estudiantes: Lucía, Diego, Sofía)    ║");
-        log.info("║  5. Retorno a Sede Principal                               ║");
-        log.info("║                                                              ║");
-        log.info("║  👨‍👧‍👦 PADRES CON ACCESO (LOGIN):                              ║");
-        log.info("║  padre_roberto / padre123 (Carlos)                         ║");
-        log.info("║  padre_francisco / padre123 (Ana, Pedro)                   ║");
-        log.info("║  padre_patricia / padre123 (Lucía, Diego)                  ║");
-        log.info("║  padre_gustavo / padre123 (Sofía)                          ║");
-        log.info("║                                                              ║");
-        log.info("║  🔐 ADMIN USERS (LOGIN):                                    ║");
-        log.info("║  admin / admin123 (ROLE_ADMIN)                             ║");
-        log.info("║  admin.transport / admin123 (ROLE_TRANSPORT)               ║");
-        log.info("║  admin.colegio / admin123 (ROLE_SCHOOL)                   ║");
-        log.info("║                                                              ║");
-        log.info("║  ⏰ HORARIO:                                                ║");
-        log.info("║  Inicio: {} (+30 min desde ahora)            ║", ruta.getHoraInicio());
-        log.info("║  Fin: {}                                    ║", ruta.getHoraFin());
-        log.info("║                                                              ║");
-        log.info("║  🧪 READY FOR TESTING                                     ║");
-        log.info("╚════════════════════════════════════════════════════════════╝\n");
+        log.info("\n╔════════════════════════════════════════════════════════════════════════╗");
+        log.info("║                    SEED DATA COMPLETADO                               ║");
+        log.info("║                                                                        ║");
+        log.info("║  🚌 RUTA COMPLETA PARA PRUEBAS                                        ║");
+        log.info("║  ────────────────────────────────────────────────────────────────────  ║");
+        log.info("║  📍 Ruta ID: {}                                       ║", savedRuta.getId());
+        log.info("║  👨‍✈️  Conductor: Juan Pérez García (ASIGNADO)                         ║");
+        log.info("║  👩‍✈️  Coordinador: María López García (ASIGNADO)                      ║");
+        log.info("║  🚌 Bus: ABC-001 (40 estudiantes)                                     ║");
+        log.info("║  🏫 Sede: Sede Principal                                               ║");
+        log.info("║                                                                        ║");
+        log.info("║  PARADAS:                                                              ║");
+        log.info("║  1. Sede Principal (partida)                                          ║");
+        log.info("║  2. Cra 5 #10-25 (1 estudiante: Carlos)                               ║");
+        log.info("║  3. Cra 6 #12-30 (2 estudiantes: Ana, Pedro)                         ║");
+        log.info("║  4. Cra 8 #15-40 (3 estudiantes: Lucía, Diego, Sofía)               ║");
+        log.info("║  5. Retorno a Sede Principal                                          ║");
+        log.info("║                                                                        ║");
+        log.info("║  👨‍👧‍👦 PADRES CON ACCESO (LOGIN):                                         ║");
+        log.info("║  padre_roberto / padre123 (Carlos)                                    ║");
+        log.info("║  padre_francisco / padre123 (Ana, Pedro)                              ║");
+        log.info("║  padre_patricia / padre123 (Lucía, Diego)                             ║");
+        log.info("║  padre_gustavo / padre123 (Sofía)                                     ║");
+        log.info("║                                                                        ║");
+        log.info("║  🚗 CONDUCTOR Y COORDINADOR (LOGIN):                                  ║");
+        log.info("║  👨‍✈️  conductor.juan / conductor123 (ROLE_TRANSPORT) - RUTA ASIGNADA  ║");
+        log.info("║  👩‍✈️  coordinador.maria / coordinador123 (ROLE_TRANSPORT) - RUTA ASIGNADA ║");
+        log.info("║                                                                        ║");
+        log.info("║  🔐 ADMIN USERS (LOGIN):                                               ║");
+        log.info("║  admin / admin123 (ROLE_ADMIN)                                         ║");
+        log.info("║  admin.transport / admin123 (ROLE_TRANSPORT)                           ║");
+        log.info("║  admin.colegio / admin123 (ROLE_SCHOOL)                              ║");
+        log.info("║                                                                        ║");
+        log.info("║  ⏰ HORARIO:                                                           ║");
+        log.info("║  Inicio: {} (+30 min desde ahora)                  ║", ruta.getHoraInicio());
+        log.info("║  Fin: {}                                          ║", ruta.getHoraFin());
+        log.info("║                                                                        ║");
+        log.info("║  📱 FUNCIONALIDADES DISPONIBLES (CONDUCTOR/COORDINADOR):              ║");
+        log.info("║  ✓ Ver rutas asignadas para hoy: GET /api/rutas/today                ║");
+        log.info("║  ✓ Ver rutas programadas                                               ║");
+        log.info("║  ✓ Ver rutas completadas                                               ║");
+        log.info("║  ✓ Ver información completa de ruta                                    ║");
+        log.info("║  ✓ Ver bus asignado                                                    ║");
+        log.info("║  ✓ Ver coordinador/conductor asignado                                 ║");
+        log.info("║  ✓ Ver paradas y estudiantes a recoger/dejar                          ║");
+        log.info("║  ✓ Reportar recogida/no abordaje durante ruta                         ║");
+        log.info("║  ✓ Reportar novedades durante la ruta                                 ║");
+        log.info("║  ✓ Generar reporte final post-completar ruta                          ║");
+        log.info("║                                                                        ║");
+        log.info("║  🧪 READY FOR TESTING                                                ║");
+        log.info("╚════════════════════════════════════════════════════════════════════════╝\n");
     }
 
     /**
