@@ -60,87 +60,265 @@ public class RutaService {
         this.pasajeroRepository = pasajeroRepository;
     }
 
-    // Crear ruta validando existencia de referencias
+    /**
+     * CREAR RUTA CON VALIDACIÓN DE OWNERSHIP
+     *
+     * Reglas:
+     * - ROLE_SCHOOL: Solo rutas de sus propias sedes
+     * - ROLE_TRANSPORT: Rutas con su tenant TRANSPORT
+     * - ROLE_ADMIN: Sin restricciones
+     * - Validar existencia de referencias
+     * - Establecer tenant automáticamente
+     */
     public Ruta create(Ruta ruta) {
-        // validar bus
-        if (ruta.getBusId() != null && !ruta.getBusId().isBlank()) {
-            if (!busRepository.existsById(ruta.getBusId())) {
-                throw new NotFoundException("Bus not found: " + ruta.getBusId());
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+
+        // STEP 1: Validar acceso basado en rol
+        if (role == Role.ROLE_SCHOOL) {
+            // ROLE_SCHOOL: Solo puede crear rutas en sus sedes
+            Sede sede = sedeRepository.findById(ruta.getSedeId())
+                    .orElseThrow(() -> new NotFoundException("Sede no encontrada: " + ruta.getSedeId()));
+
+            if (!sede.getTenant().equals(tenant)) {
+                log.warn("DENEGADO: ROLE_SCHOOL intenta crear ruta en sede ajena - tenant: {}", tenant);
+                throw new IllegalStateException("No tiene permiso para crear rutas en esta sede");
             }
+            ruta.setTenant(tenant);  // Sede suya
+        } else if (role == Role.ROLE_TRANSPORT) {
+            // ROLE_TRANSPORT: Puede crear rutas asignándolas a sus conductores/coordinadores
+            ruta.setTenant(tenant);  // Su tenant TRANSPORT
+        } else if (role != Role.ROLE_ADMIN) {
+            throw new IllegalStateException("Solo ROLE_ADMIN y ROLE_TRANSPORT pueden crear rutas");
         }
-        // validar conductor
-        if (ruta.getConductorId() != null && !ruta.getConductorId().isBlank()) {
-            if (!conductorRepository.existsById(ruta.getConductorId())) {
-                throw new NotFoundException("Conductor not found: " + ruta.getConductorId());
-            }
-        }
-        // validar coordinador
-        if (ruta.getCoordinadorId() != null && !ruta.getCoordinadorId().isBlank()) {
-            if (!coordinadorRepository.existsById(ruta.getCoordinadorId())) {
-                throw new NotFoundException("Coordinador not found: " + ruta.getCoordinadorId());
-            }
-        }
-        // validar sede
-        if (ruta.getSedeId() != null && !ruta.getSedeId().isBlank()) {
-            if (!sedeRepository.existsById(ruta.getSedeId())) {
-                throw new NotFoundException("Sede not found: " + ruta.getSedeId());
-            }
-        }
-        // validar estudiantes
-        if (ruta.getEstudiantes() != null) {
-            for (String pid : ruta.getEstudiantes()) {
-                if (!pasajeroRepository.existsById(pid)) {
-                    throw new NotFoundException("Pasajero not found: " + pid);
-                }
-            }
-        }
-        // No forzamos estado: la entidad Ruta tiene por defecto DRAFT en @PrePersist
-        return repository.save(ruta);
+
+        // STEP 2: Validar referencias (bus, conductor, coordinador, sede, estudiantes)
+        validateRutaReferences(ruta);
+
+        // STEP 3: Validar estudiantes pertenecen a sedes autorizadas
+        validateCrossTenantsAccess(ruta);
+
+        // STEP 4: Guardar
+        Ruta saved = repository.save(ruta);
+        log.info("✅ Ruta creada: {} - Tenant: {} - Rol: {}", saved.getId(), tenant, role);
+        return saved;
     }
 
+    /**
+     * LISTAR RUTAS CON VISIBILIDAD BASADA EN OWNERSHIP + CROSS-TENANT
+     *
+     * ROLE_ADMIN: Ve todas
+     * ROLE_SCHOOL: Ve rutas de su colegio + rutas donde tiene estudiantes
+     * ROLE_TRANSPORT: Ve rutas suyas + rutas donde tiene estudiantes asignados
+     * - Si es conductor/coordinador: Ve solo rutas asignadas
+     * - Si es admin.transport: Ve rutas de su tenant
+     */
     public List<Ruta> listAll() {
         Role role = SecurityUtils.getRoleClaim();
         String tenant = SecurityUtils.getTenantClaim("tid");
 
-        // Administradores pueden ver rutas en DRAFT y PUBLISHED
         if (role == Role.ROLE_ADMIN) {
             return repository.findAll();
         }
 
+        if (role == Role.ROLE_SCHOOL && tenant != null) {
+            // Rutas propiedad del colegio
+            return repository.findRutasVisiblesAlColegio(tenant);
+        }
+
         if (role == Role.ROLE_TRANSPORT && tenant != null) {
-            List<Sede> sedes = sedeRepository.findByTransportId(tenant);
-            var sedeIds = sedes.stream().map(Sede::getId).toList();
-            return repository.findAll().stream()
-                    .filter(r -> r.getSedeId() != null && sedeIds.contains(r.getSedeId()))
-                    .toList();
-        } else if (role == Role.ROLE_SCHOOL && tenant != null) {
-            return repository.findAll().stream()
-                    .filter(r -> tenant.equals(r.getSedeId()))
-                    .toList();
+            // Estrategia: si tiene conductorId/coordinadorId en usuario, es driver específico
+            // Si no, es admin.transport que ve todas sus rutas
+            String personaId = SecurityUtils.getUserIdClaim();
+
+            // Intentar: ¿es un driver asignado? (tiene rutas asignadas)
+            List<Ruta> rutasAsignadas = repository.findByAsignadoA(personaId);
+            if (!rutasAsignadas.isEmpty()) {
+                return rutasAsignadas;  // Es conductor/coordinador específico
+            }
+
+            // Sino: es admin.transport, ve rutas de su tenant TRANSPORT
+            return repository.findRutasVisiblesAlTransport(tenant);
         }
 
-        return repository.findAll();
+        return List.of();
     }
 
+    /**
+     * OBTENER RUTA CON VALIDACIÓN DE OWNERSHIP + CROSS-TENANT ACCESS
+     *
+     * Patterns:
+     * 1. Ownership: Usuario puede ver rutas de su tenant
+     * 2. Cross-Tenant: Usuario puede ver ruta si tiene un estudiante/persona asignada
+     */
     public Ruta getById(String id) {
-        return repository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Ruta not found: " + id));
-    }
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
 
-    public Ruta update(String id, Ruta ruta) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("Ruta not found: " + id);
+        Ruta ruta = repository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Ruta no encontrada: " + id));
+
+        // Validar acceso
+        if (!canAccessRoute(ruta, role, tenant)) {
+            log.warn("DENEGADO: {} intenta acceder a ruta {} (tenant: {})", role, id, tenant);
+            throw new NotFoundException("Ruta no encontrada");
         }
-        ruta.setId(id);
-        return repository.save(ruta);
+
+        return ruta;
     }
 
+    /**
+     * ACTUALIZAR RUTA CON VALIDACIÓN DE OWNERSHIP
+     *
+     * Solo el dueño de la ruta puede actualizar
+     */
+    public Ruta update(String id, Ruta rutaUpdate) {
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+
+        Ruta ruta = getById(id);  // Valida acceso
+
+        // Validar que solo owner puede actualizar
+        if (!ruta.getTenant().equals(tenant) && role != Role.ROLE_ADMIN) {
+            log.warn("DENEGADO: {} intenta actualizar ruta ajena {}", role, id);
+            throw new IllegalStateException("No tiene permiso para actualizar esta ruta");
+        }
+
+        // Actualizar solo campos permitidos
+        if (rutaUpdate.getNombre() != null) ruta.setNombre(rutaUpdate.getNombre());
+        if (rutaUpdate.getEstado() != null) ruta.setEstado(rutaUpdate.getEstado());
+        if (rutaUpdate.getHoraInicio() != null) ruta.setHoraInicio(rutaUpdate.getHoraInicio());
+        if (rutaUpdate.getHoraFin() != null) ruta.setHoraFin(rutaUpdate.getHoraFin());
+
+        // NO permitir cambiar ownership
+        // NO permitir cambiar estudiantes (usar asignarEstudianteARuta)
+
+        Ruta updated = repository.save(ruta);
+        log.info("✅ Ruta actualizada: {}", id);
+        return updated;
+    }
+
+    /**
+     * ELIMINAR RUTA CON VALIDACIÓN DE OWNERSHIP
+     */
     public void delete(String id) {
-        if (!repository.existsById(id)) {
-            throw new NotFoundException("Ruta not found: " + id);
+        Ruta ruta = getById(id);  // Valida acceso
+
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+
+        if (!ruta.getTenant().equals(tenant) && role != Role.ROLE_ADMIN) {
+            log.warn("DENEGADO: {} intenta eliminar ruta ajena {}", role, id);
+            throw new IllegalStateException("No tiene permiso para eliminar esta ruta");
         }
+
         repository.deleteById(id);
         paradasTemporales.remove(id);
+        log.info("✅ Ruta eliminada: {}", id);
+    }
+
+    // ===== MÉTODOS AUXILIARES DE VALIDACIÓN =====
+
+    /**
+     * Valida si un usuario puede acceder a una ruta
+     * Soporta: Ownership + Cross-Tenant (a través de assignment)
+     */
+    private boolean canAccessRoute(Ruta ruta, Role role, String tenant) {
+        if (role == Role.ROLE_ADMIN) return true;
+
+        // Ownership: es el dueño
+        if (ruta.getTenant().equals(tenant)) {
+            if (role == Role.ROLE_SCHOOL || role == Role.ROLE_TRANSPORT) {
+                return true;
+            }
+        }
+
+        // Cross-Tenant: asignado a esta ruta (ROLE_TRANSPORT como conductor/coordinador)
+        if (role == Role.ROLE_TRANSPORT) {
+            String personaId = SecurityUtils.getUserIdClaim();
+            return ruta.getConductorId() != null && ruta.getConductorId().equals(personaId) ||
+                   ruta.getCoordinadorId() != null && ruta.getCoordinadorId().equals(personaId);
+        }
+
+        return false;
+    }
+
+    /**
+     * Valida que todas las referencias existan
+     */
+    private void validateRutaReferences(Ruta ruta) {
+        if (ruta.getBusId() != null && !ruta.getBusId().isBlank()) {
+            if (!busRepository.existsById(ruta.getBusId())) {
+                throw new NotFoundException("Bus no encontrado: " + ruta.getBusId());
+            }
+        }
+        if (ruta.getConductorId() != null && !ruta.getConductorId().isBlank()) {
+            if (!conductorRepository.existsById(ruta.getConductorId())) {
+                throw new NotFoundException("Conductor no encontrado: " + ruta.getConductorId());
+            }
+        }
+        if (ruta.getCoordinadorId() != null && !ruta.getCoordinadorId().isBlank()) {
+            if (!coordinadorRepository.existsById(ruta.getCoordinadorId())) {
+                throw new NotFoundException("Coordinador no encontrado: " + ruta.getCoordinadorId());
+            }
+        }
+        if (ruta.getSedeId() != null && !ruta.getSedeId().isBlank()) {
+            if (!sedeRepository.existsById(ruta.getSedeId())) {
+                throw new NotFoundException("Sede no encontrada: " + ruta.getSedeId());
+            }
+        }
+        if (ruta.getEstudiantes() != null) {
+            for (String pId : ruta.getEstudiantes()) {
+                if (!pasajeroRepository.existsById(pId)) {
+                    throw new NotFoundException("Pasajero no encontrado: " + pId);
+                }
+            }
+        }
+    }
+
+    /**
+     * Valida que los estudiantes asignados pertenezcan a sedes autorizadas
+     * Pattern: Estudiantes pueden venir de múltiples SCHOOL tenants
+     * PERO solo si el TRANSPORT tiene acceso a esas sedes
+     */
+    private void validateCrossTenantsAccess(Ruta ruta) {
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+
+        if (ruta.getEstudiantes() == null || ruta.getEstudiantes().isEmpty()) {
+            return;
+        }
+
+        // Para ROLE_TRANSPORT: validar que los estudiantes pertenecen a sedes que administra
+        if (role == Role.ROLE_TRANSPORT) {
+            List<Sede> sedesAutorizadas = sedeRepository.findByTransportId(tenant);
+            for (String estudianteId : ruta.getEstudiantes()) {
+                Pasajero p = pasajeroRepository.findById(estudianteId)
+                        .orElseThrow(() -> new NotFoundException("Estudiante no encontrado: " + estudianteId));
+
+                // Validar que la sede del estudiante es administrada por este transport
+                boolean sedeAutorizada = sedesAutorizadas.stream()
+                        .anyMatch(s -> s.getId().equals(p.getSedeId()));
+
+                if (!sedeAutorizada) {
+                    log.warn("DENEGADO: Estudiante {} de sede ajena asignado a ruta del TRANSPORT {}", estudianteId, tenant);
+                    throw new IllegalStateException("No tiene permiso para asignar estudiantes de esa sede");
+                }
+            }
+        }
+
+        // Para ROLE_SCHOOL: validar que estudiantes son del colegio
+        if (role == Role.ROLE_SCHOOL) {
+            for (String estudianteId : ruta.getEstudiantes()) {
+                Pasajero p = pasajeroRepository.findById(estudianteId)
+                        .orElseThrow(() -> new NotFoundException("Estudiante no encontrado: " + estudianteId));
+
+                if (!p.getTenant().equals(tenant)) {
+                    log.warn("DENEGADO: Estudiante {} de colegio ajeno asignado por ROLE_SCHOOL {}", estudianteId, tenant);
+                    throw new IllegalStateException("Solo puede asignar estudiantes de su colegio");
+                }
+            }
+        }
     }
 
     // Publishes a draft route: cambia estado de DRAFT a ACTIVE
@@ -369,5 +547,36 @@ public class RutaService {
         if (list == null) throw new NotFoundException("No paradas for ruta: " + rutaId);
         return list.stream().filter(p -> p.getId().equals(paradaId))
                 .findFirst().orElseThrow(() -> new NotFoundException("Parada not found: " + paradaId));
+    }
+
+    /**
+     * Verifica si existen cruces de horarios entre rutas asignadas al mismo conductor.
+     *
+     * @param conductorId ID del conductor a verificar.
+     * @return true si hay cruces de horarios, false en caso contrario.
+     */
+    public boolean verificarCrucesDeHorarios(String conductorId) {
+        List<Ruta> rutas = repository.findByConductorId(conductorId);
+
+        for (int i = 0; i < rutas.size(); i++) {
+            Ruta ruta1 = rutas.get(i);
+            LocalTime inicio1 = LocalTime.parse(ruta1.getHoraInicio(), TIME_FORMATTER);
+            LocalTime fin1 = LocalTime.parse(ruta1.getHoraFin(), TIME_FORMATTER);
+
+            for (int j = i + 1; j < rutas.size(); j++) {
+                Ruta ruta2 = rutas.get(j);
+                LocalTime inicio2 = LocalTime.parse(ruta2.getHoraInicio(), TIME_FORMATTER);
+                LocalTime fin2 = LocalTime.parse(ruta2.getHoraFin(), TIME_FORMATTER);
+
+                // Verificar si hay solapamiento
+                if (inicio1.isBefore(fin2) && inicio2.isBefore(fin1)) {
+                    log.warn("Cruce de horarios detectado entre rutas {} y {} para el conductor {}",
+                             ruta1.getId(), ruta2.getId(), conductorId);
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 }

@@ -1,7 +1,7 @@
 package nca.scc.com.admin.rutas.driver;
 
 import nca.scc.com.admin.rutas.driver.dto.DriverRouteHistoryResponse;
-import nca.scc.com.admin.rutas.driver.dto.DriverRoutesTodayResponse;
+import nca.scc.com.admin.rutas.driver.dto.DriverRouteHome;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -14,12 +14,13 @@ public class DriverController {
         this.driverService = driverService;
     }
 
+
     /**
-     * GET /api/driver/routes/today
+     * GET /api/driver/routes/getRoutesToday
      * Rutas del día para el conductor autenticado (JWT), agrupadas en activa, programadas y completadas.
      */
-    @GetMapping("/routes/today")
-    public DriverRoutesTodayResponse getRoutesToday() {
+    @GetMapping("/routes/getRoutesToday")
+    public DriverRouteHome getRoutesToday() {
         return driverService.getRoutesToday();
     }
 

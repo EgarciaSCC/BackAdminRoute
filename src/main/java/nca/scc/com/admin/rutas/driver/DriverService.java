@@ -8,9 +8,9 @@ import nca.scc.com.admin.rutas.bus.BusRepository;
 import nca.scc.com.admin.rutas.bus.entity.Bus;
 import nca.scc.com.admin.rutas.conductor.ConductorRepository;
 import nca.scc.com.admin.rutas.conductor.entity.Conductor;
+import nca.scc.com.admin.rutas.driver.dto.DriverRouteHome;
 import nca.scc.com.admin.rutas.driver.dto.DriverRoutePreview;
 import nca.scc.com.admin.rutas.driver.dto.DriverRouteHistoryResponse;
-import nca.scc.com.admin.rutas.driver.dto.DriverRoutesTodayResponse;
 import nca.scc.com.admin.rutas.historial.HistorialRutaRepository;
 import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
 import nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta;
@@ -61,7 +61,11 @@ public class DriverService {
     }
 
     /**
-     * Resuelve el conductor asociado al usuario autenticado. Requiere rol driver y conductorId en Usuario.
+     * Resuelve el conductor/coordinador asociado al usuario autenticado.
+     * Requiere rol ROLE_TRANSPORT y conductorId O coordinadorId en Usuario.
+     *
+     * @return Conductor si el usuario tiene conductorId, coordinador si tiene coordinadorId
+     * @throws ResponseStatusException si no tiene ninguno o rol es incorrecto
      */
     public Conductor resolveDriverFromAuth() {
         Jwt jwt = getJwt();
@@ -75,62 +79,127 @@ public class DriverService {
         Usuario user = usuarioRepository.findByUsername(username)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "Usuario no encontrado"));
         if (user.getRole() != Role.ROLE_TRANSPORT) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rol driver requerido");
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Rol ROLE_TRANSPORT requerido");
         }
+
+        // Primero intentar conductorId (conductor)
         String conductorId = user.getConductorId();
-        if (conductorId == null || conductorId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Conductor no asociado al usuario");
+        if (conductorId != null && !conductorId.isBlank()) {
+            return conductorRepository.findById(conductorId)
+                    .orElseThrow(() -> new NotFoundException("Conductor no encontrado: " + conductorId));
         }
-        return conductorRepository.findById(conductorId)
-                .orElseThrow(() -> new NotFoundException("Conductor no encontrado: " + conductorId));
+
+        // Si no tiene conductorId, es coordinador - retornar un "Conductor" proxy
+        // que representa al coordinador (ambos usan la misma lógica de rutas)
+        String coordinadorId = user.getCoordinadorId();
+        if (coordinadorId != null && !coordinadorId.isBlank()) {
+            // Crear un objeto Conductor que represente al coordinador
+            // Esto permite que el coordinador use la misma lógica de getRoutesToday()
+            Conductor proxy = new Conductor();
+            proxy.setId(coordinadorId);
+            proxy.setNombre(user.getNombre());
+            // Marcar como coordinador para futuras validaciones
+            return proxy;
+        }
+
+        throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+            "Ni conductorId ni coordinadorId asociados al usuario");
     }
 
-    public DriverRoutesTodayResponse getRoutesToday() {
+    public DriverRouteHome getRoutesToday() {
         Conductor driver = resolveDriverFromAuth();
         String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
-        List<Ruta> rutasDelConductor = rutaRepository.findByConductorId(driver.getId());
-        if (rutasDelConductor.isEmpty()) {
-            return emptyTodayResponse(driver.getId(), driver.getNombre(), today);
+        List<Ruta> rutasAsignadas = getAssignedRoutes(driver);
+        if (rutasAsignadas.isEmpty()) {
+            return emptyRouteHomeTodayResponse(driver.getId(), driver.getNombre(), today);
         }
-        Set<String> rutaIds = rutasDelConductor.stream().map(Ruta::getId).collect(Collectors.toSet());
+        Set<String> rutaIds = rutasAsignadas.stream().map(Ruta::getId).collect(Collectors.toSet());
         List<HistorialRuta> historiales = historialRutaRepository.findByRutaIdInAndFechaOrderByHoraInicioAsc(rutaIds, today);
-        if (historiales.isEmpty()) {
-            return emptyTodayResponse(driver.getId(), driver.getNombre(), today);
+        List<Ruta> activeRoutes = new ArrayList<>();
+        List<Ruta> scheduledRoutes = new ArrayList<>();
+        List<Ruta> completedRoutes = new ArrayList<>();
+
+        activeRoutes = rutasAsignadas.stream()
+                .filter(Ruta -> Ruta.getEstado() != null && Ruta.getEstado().equalsIgnoreCase("ACTIVE"))
+                .toList();
+
+        scheduledRoutes = rutasAsignadas.stream()
+                .filter(Ruta -> Ruta.getEstado() != null && Ruta.getEstado().equalsIgnoreCase("PROGRAMMED"))
+                .toList();
+
+        completedRoutes = rutasAsignadas.stream()
+                .filter(Ruta -> Ruta.getEstado() != null && Ruta.getEstado().equalsIgnoreCase("COMPLETED"))
+                .toList();
+
+        DriverRouteHome resp = new DriverRouteHome();
+        resp.setDriverId(driver.getId());
+        resp.setDriverName(driver.getNombre());
+        resp.setDate(today);
+        resp.setActiveRoutes(activeRoutes);
+        resp.setScheduledRoutes(scheduledRoutes);
+        resp.setCompletedRoutes(completedRoutes);
+        return resp;
+    }
+
+    public List<DriverRoutePreview> getRoutesProgrammed() {
+        Conductor driver = resolveDriverFromAuth();
+        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        List<Ruta> rutasAsignadas = getAssignedRoutes(driver);
+        if (rutasAsignadas.isEmpty()) {
+            return List.of();
         }
 
-        LocalTime now = LocalTime.now();
-        LocalTime nowPlus30 = now.plusMinutes(30);
-        List<DriverRoutePreview> completed = new ArrayList<>();
+        Set<String> rutaIds = rutasAsignadas.stream().map(Ruta::getId).collect(Collectors.toSet());
+        List<HistorialRuta> historiales = historialRutaRepository.findByRutaIdInAndFechaOrderByHoraInicioAsc(rutaIds, today);
+
+        LocalTime nowPlus30 = LocalTime.now().plusMinutes(30);
         List<DriverRoutePreview> scheduled = new ArrayList<>();
-        DriverRoutePreview active = null;
 
         for (HistorialRuta h : historiales) {
             Ruta ruta = rutaRepository.findById(h.getRutaId()).orElse(null);
             if (ruta == null) continue;
             DriverRoutePreview preview = toPreview(h, ruta);
-            boolean isCompleted = h.getEstado() == EstadoHistorialRuta.completada;
-            if (isCompleted) {
-                completed.add(preview);
-                continue;
-            }
             LocalTime start = parseTime(h.getHoraInicio());
             if (start != null && start.isAfter(nowPlus30)) {
-                scheduled.add(preview);
-            } else if (active == null) {
-                active = preview;
-            } else {
                 scheduled.add(preview);
             }
         }
 
-        DriverRoutesTodayResponse resp = new DriverRoutesTodayResponse();
-        resp.setDriverId(driver.getId());
-        resp.setDriverName(driver.getNombre());
-        resp.setDate(today);
-        resp.setActiveRoute(active);
-        resp.setScheduledRoutes(scheduled);
-        resp.setCompletedRoutes(completed);
-        return resp;
+        return scheduled;
+    }
+
+    public List<DriverRoutePreview> getRoutesHistory() {
+        Conductor driver = resolveDriverFromAuth();
+        String today = LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE);
+
+        List<Ruta> rutasAsignadas = getAssignedRoutes(driver);
+        if (rutasAsignadas.isEmpty()) {
+            return List.of();
+        }
+
+        Set<String> rutaIds = rutasAsignadas.stream().map(Ruta::getId).collect(Collectors.toSet());
+        List<HistorialRuta> historiales = historialRutaRepository.findByRutaIdInAndFechaOrderByHoraInicioAsc(rutaIds, today);
+
+        List<DriverRoutePreview> completed = new ArrayList<>();
+
+        for (HistorialRuta h : historiales) {
+            Ruta ruta = rutaRepository.findById(h.getRutaId()).orElse(null);
+            if (ruta == null) continue;
+            DriverRoutePreview preview = toPreview(h, ruta);
+            if (h.getEstado() == EstadoHistorialRuta.completada) {
+                completed.add(preview);
+            }
+        }
+
+        return completed;
+    }
+
+    private List<Ruta> getAssignedRoutes(Conductor driver) {
+        List<Ruta> rutasAsignadas = new ArrayList<>();
+        rutasAsignadas.addAll(rutaRepository.findByConductorId(driver.getId()));
+        rutasAsignadas.addAll(rutaRepository.findByCoordinadorId(driver.getId()));
+        return rutasAsignadas.stream().distinct().toList();
     }
 
     public DriverRouteHistoryResponse getRoutesHistory(String startDate, String endDate, int page, int limit) {
@@ -237,12 +306,12 @@ public class DriverService {
         }
     }
 
-    private static DriverRoutesTodayResponse emptyTodayResponse(String driverId, String driverName, String date) {
-        DriverRoutesTodayResponse r = new DriverRoutesTodayResponse();
+    private static DriverRouteHome emptyRouteHomeTodayResponse(String driverId, String driverName, String date) {
+        DriverRouteHome r = new DriverRouteHome();
         r.setDriverId(driverId);
         r.setDriverName(driverName);
         r.setDate(date);
-        r.setActiveRoute(null);
+        r.setActiveRoutes(List.of());
         r.setScheduledRoutes(List.of());
         r.setCompletedRoutes(List.of());
         return r;

@@ -11,8 +11,13 @@ import java.util.Optional;
 
 public interface PasajeroRepository extends JpaRepository<Pasajero, String> {
 
+    // ===== TENANT-BASED QUERIES (ROLE_ADMIN_SCHOOL) =====
+
     Optional<Pasajero> findByMatricula(String matricula);
 
+    /**
+     * Estudiantes de un tenant específico (colegio)
+     */
     List<Pasajero> findByTenant(String tenant);
 
     List<Pasajero> findBySedeId(String sedeId);
@@ -22,12 +27,33 @@ public interface PasajeroRepository extends JpaRepository<Pasajero, String> {
     @Query("SELECT p FROM Pasajero p WHERE p.tenant = :tenant AND p.activo = true")
     List<Pasajero> findActivosByTenant(@Param("tenant") String tenant);
 
-    @Query("select p from Pasajero p, nca.scc.com.admin.rutas.sede.entity.Sede s where p.sedeId = s.id and s.transportId = :transportId")
+    // ===== CROSS-TENANT QUERIES (ROLE_ADMIN_TRANSPORT & ROLE_TRANSPORT) =====
+
+    /**
+     * Estudiantes de sedes administradas por un TRANSPORT tenant
+     */
+    @Query("SELECT DISTINCT p FROM Pasajero p, Sede s WHERE p.sedeId = s.id AND s.transportId = :transportId")
     List<Pasajero> findBySedeTransportId(@Param("transportId") String transportId);
 
-    // Comprueba si existe un pasajero con id en la lista y cuyo padreId coincide con el padre dado
+    // Queries con MEMBER OF deshabilitadas - H2 no soporta correctamente
+    // findByRutaId, findByRutaIdIn, existsInRuta removidas
+    // Usar RutaService.getFullById() + mapeo manual si es necesario
+
+    /**
+     * Verificar padre-estudiante (para ROLE_PARENT)
+     */
     @Query("SELECT CASE WHEN COUNT(p) > 0 THEN true ELSE false END FROM Pasajero p WHERE p.id IN :ids AND p.padreId = :padreId")
     boolean existsAnyByIdsAndPadreId(@Param("ids") List<String> ids, @Param("padreId") String padreId);
 
     boolean existsByIdAndPadreId(String id, String padreId);
+
+    /**
+     * Estudiantes de una sede que un TRANSPORT puede ver
+     * (visible SOLO si administra la sede)
+     */
+    @Query("SELECT p FROM Pasajero p, Sede s WHERE p.sedeId = s.id AND s.transportId = :transportId AND s.id = :sedeId")
+    List<Pasajero> findBySedeIdAdministrado(@Param("sedeId") String sedeId, @Param("transportId") String transportId);
+
+    // Nuevo: listar por padreId (para ROLE_PARENT)
+    List<Pasajero> findByPadreId(String padreId);
 }

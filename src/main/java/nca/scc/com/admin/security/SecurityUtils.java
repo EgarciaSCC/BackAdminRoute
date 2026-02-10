@@ -15,6 +15,15 @@ public class SecurityUtils {
         return null;
     }
 
+    /**
+     * Obtiene el ID del usuario desde el JWT (claim 'sub' = username)
+     */
+    public static String getUserIdClaim() {
+        Jwt jwt = getJwt();
+        if (jwt == null) return null;
+        return jwt.getSubject();  // Username es el subject
+    }
+
     public static String getTenantClaim(String claimName) {
         Jwt jwt = getJwt();
         if (jwt == null) return null;

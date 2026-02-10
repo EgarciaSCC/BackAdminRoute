@@ -7,6 +7,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import nca.scc.com.admin.rutas.ruta.dto.RutaResponseDTO;
+import nca.scc.com.admin.rutas.ruta.dto.RutaRoleDTO;
+import nca.scc.com.admin.rutas.pasajero.dto.PasajeroPublicDTO;
+import nca.scc.com.admin.security.SecurityUtils;
+import nca.scc.com.admin.rutas.auth.Role;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,26 +29,37 @@ public class RutaController {
         this.service = service;
     }
 
-    // Devuelve DTOs completos con relaciones
+    // Devuelve DTOs completos con relaciones (role-aware)
     @GetMapping
     @Operation(summary = "List all routes", description = "Retrieve all routes with full details")
     @ApiResponse(responseCode = "200", description = "List of routes")
-    public List<RutaResponseDTO> list() {
-        return service.listAllFull();
+    public List<RutaRoleDTO> list() {
+        Role role = SecurityUtils.getRoleClaim();
+        return service.listAllFull().stream().map(r -> {
+            var pasajeros = r.getPasajeros();
+            List<nca.scc.com.admin.rutas.pasajero.entity.Pasajero> pas = pasajeros == null ? null : pasajeros;
+            return RutaRoleDTO.from(r.getRuta(), pas, role);
+        }).toList();
     }
 
     @GetMapping("/estado/{estado}")
     @Operation(summary = "List routes by status", description = "Filter routes by their status")
     @ApiResponse(responseCode = "200", description = "Filtered routes")
-    public List<RutaResponseDTO> listByEstado(@PathVariable String estado) {
-        return service.listAllFull().stream().filter(r -> r.getRuta().getEstado() != null && r.getRuta().getEstado().equalsIgnoreCase(estado)).toList();
+    public List<RutaRoleDTO> listByEstado(@PathVariable String estado) {
+        Role role = SecurityUtils.getRoleClaim();
+        return service.listAllFull().stream()
+                .filter(r -> r.getRuta().getEstado() != null && r.getRuta().getEstado().equalsIgnoreCase(estado))
+                .map(r -> RutaRoleDTO.from(r.getRuta(), r.getPasajeros(), role))
+                .toList();
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Get route by ID", description = "Retrieve a specific route with full details")
     @ApiResponse(responseCode = "200", description = "Route details")
-    public RutaResponseDTO get(@PathVariable String id) {
-        return service.getFullById(id);
+    public RutaRoleDTO get(@PathVariable String id) {
+        Role role = SecurityUtils.getRoleClaim();
+        RutaResponseDTO r = service.getFullById(id);
+        return RutaRoleDTO.from(r.getRuta(), r.getPasajeros(), role);
     }
 
     // Endpoints para compatibilidad: crear/actualizar la entidad Ruta sin resolver relaciones
@@ -104,6 +119,14 @@ public class RutaController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable String id) {
         service.delete(id);
+    }
+
+    @GetMapping("/conductor/{conductorId}/verificar-cruces")
+    @Operation(summary = "Verificar cruces de horarios", description = "Verifica si existen cruces de horarios entre rutas asignadas a un conductor específico.")
+    @ApiResponse(responseCode = "200", description = "Resultado de la verificación de cruces de horarios")
+    public ResponseEntity<Boolean> verificarCrucesDeHorarios(@PathVariable String conductorId) {
+        boolean hayCruces = service.verificarCrucesDeHorarios(conductorId);
+        return ResponseEntity.ok(hayCruces);
     }
 
     /**

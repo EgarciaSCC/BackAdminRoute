@@ -9,6 +9,9 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
 
 import nca.scc.com.admin.rutas.pasajero.entity.Pasajero;
+import nca.scc.com.admin.rutas.pasajero.dto.PasajeroPublicDTO;
+import nca.scc.com.admin.security.SecurityUtils;
+import nca.scc.com.admin.rutas.auth.Role;
 
 import java.net.URI;
 import java.util.List;
@@ -37,31 +40,35 @@ public class PasajeroController {
     }
 
     @GetMapping
-    public List<Pasajero> list() {
+    public List<PasajeroPublicDTO> list() {
         log.debug("GET /api/pasajeros");
-        return service.listAll();
+        Role role = SecurityUtils.getRoleClaim();
+        return service.listAll().stream().map(p -> PasajeroPublicDTO.from(p, role)).toList();
     }
 
     @GetMapping("/{id}")
-    public Pasajero get(@PathVariable String id) {
+    public PasajeroPublicDTO get(@PathVariable String id) {
         log.debug("GET /api/pasajeros/{}", id);
-        return service.getById(id);
+        Role role = SecurityUtils.getRoleClaim();
+        return PasajeroPublicDTO.from(service.getById(id), role);
     }
 
     @GetMapping("/sede/{sedeId}")
-    public List<Pasajero> listBySede(@PathVariable String sedeId) {
+    public List<PasajeroPublicDTO> listBySede(@PathVariable String sedeId) {
         log.debug("GET /api/pasajeros/sede/{}", sedeId);
-        return service.listBySedeId(sedeId);
+        Role role = SecurityUtils.getRoleClaim();
+        return service.listBySedeId(sedeId).stream().map(p -> PasajeroPublicDTO.from(p, role)).toList();
     }
 
     @GetMapping("/estado/activos")
-    public List<Pasajero> listActivos() {
+    public List<PasajeroPublicDTO> listActivos() {
         log.debug("GET /api/pasajeros/estado/activos");
-        return service.listActivos();
+        Role role = SecurityUtils.getRoleClaim();
+        return service.listActivos().stream().map(p -> PasajeroPublicDTO.from(p, role)).toList();
     }
 
     @PostMapping
-    public ResponseEntity<Pasajero> create(@Valid @RequestBody Pasajero pasajero) {
+    public ResponseEntity<PasajeroPublicDTO> create(@Valid @RequestBody Pasajero pasajero) {
         log.info("POST /api/pasajeros - Creando pasajero: {}", pasajero.getNombre());
         Pasajero created = service.create(pasajero);
         URI location = ServletUriComponentsBuilder
@@ -69,13 +76,16 @@ public class PasajeroController {
                 .path("/{id}")
                 .buildAndExpand(created.getId())
                 .toUri();
-        return ResponseEntity.created(location).body(created);
+        Role role = SecurityUtils.getRoleClaim();
+        return ResponseEntity.created(location).body(PasajeroPublicDTO.from(created, role));
     }
 
     @PutMapping("/{id}")
-    public Pasajero update(@PathVariable String id, @Valid @RequestBody Pasajero pasajero) {
+    public PasajeroPublicDTO update(@PathVariable String id, @Valid @RequestBody Pasajero pasajero) {
         log.info("PUT /api/pasajeros/{} - Actualizando pasajero", id);
-        return service.update(id, pasajero);
+        Role role = SecurityUtils.getRoleClaim();
+        Pasajero updated = service.update(id, pasajero);
+        return PasajeroPublicDTO.from(updated, role);
     }
 
     @DeleteMapping("/{id}")
