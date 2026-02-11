@@ -22,6 +22,7 @@ public class Ruta {
     private String sedeId;
 
     @ElementCollection
+    @Column(name = "pasajeros")
     private List<String> estudiantes;
 
     private String estado;

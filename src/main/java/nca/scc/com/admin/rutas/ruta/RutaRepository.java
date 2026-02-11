@@ -69,4 +69,5 @@ public interface RutaRepository extends JpaRepository<Ruta, String> {
      */
     @Query("SELECT r FROM Ruta r WHERE r.tenant = :schoolTenant")
     List<Ruta> findRutasVisiblesAlColegio(@Param("schoolTenant") String schoolTenant);
+
 }

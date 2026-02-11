@@ -13,8 +13,9 @@ import nca.scc.com.admin.rutas.auth.entity.Usuario;
 import nca.scc.com.admin.rutas.auth.Role;
 import nca.scc.com.admin.rutas.ruta.RutaRepository;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
+import java.util.Optional;
 
 /**
  * Servicio para gestión de Pasajeros/Estudiantes
@@ -29,12 +30,10 @@ public class PasajeroService {
     private static final Logger log = LoggerFactory.getLogger(PasajeroService.class);
     private final PasajeroRepository repository;
     private final UsuarioRepository usuarioRepository;
-    private final RutaRepository rutaRepository;
 
     public PasajeroService(PasajeroRepository repository, UsuarioRepository usuarioRepository, RutaRepository rutaRepository) {
         this.repository = repository;
         this.usuarioRepository = usuarioRepository;
-        this.rutaRepository = rutaRepository;
     }
 
     /**
@@ -95,23 +94,28 @@ public class PasajeroService {
         String tenant = SecurityUtils.getTenantClaim("tid");
         String userId = SecurityUtils.getUserIdClaim();
 
-        Pasajero p = repository.findById(id).orElseThrow(() -> new NotFoundException("Pasajero no encontrado: " + id));
+        Optional<Pasajero> p = repository.findById(id);
+        //Pasajero p = repository.findByIdAndTransportId(id, userId);
 
-        if (role == Role.ROLE_ADMIN) return p;
+        if (p.isEmpty()) {
+            throw new NotFoundException("Pasajero no encontrado: " + id);
+        }
+
+        if (role == Role.ROLE_ADMIN) return p.orElse(null);
 
         if (role == Role.ROLE_SCHOOL && tenant != null) {
-            if (!p.getTenant().equals(tenant)) {
+            if (!p.get().getTenant().equals(tenant)) {
                 throw new NotFoundException("Pasajero no encontrado");
             }
-            return p;
+            return p.orElse(null);
         }
 
         if (role == Role.ROLE_TRANSPORT && tenant != null) {
             // Verificar que el pasajero está en una sede que administra
-            if (p.getSedeId() != null) {
+            if (p.get().getSedeId() != null) {
                 // Si el pasajero está en una sede que el transport administra, OK
                 // (Validación: sedeId debe estar vinculada a este transport tenant)
-                return p;
+                return p.orElse(null);
             }
             throw new NotFoundException("Pasajero no encontrado");
         }
@@ -119,7 +123,7 @@ public class PasajeroService {
         // ROLE_PARENT (padre) -> verificar padreId
         Usuario u = usuarioRepository.findByUsername(userId).orElse(null);
         if (u != null && u.getRole() == Role.ROLE_SCHOOL) {
-            if (repository.existsByIdAndPadreId(id, u.getId())) return p;
+            if (repository.existsByIdAndPadreId(id, u.getId())) return p.orElse(null);
             throw new NotFoundException("Pasajero no encontrado");
         }
 
@@ -190,4 +194,27 @@ public class PasajeroService {
         log.debug("Listando pasajeros activos para tenant: {}", tenant);
         return repository.findActivosByTenant(tenant);
     }
+
+    /**
+     * Listar pasajeros de ruta activa (usado para mostrar estudiantes en ruta)
+     */
+    public List<Pasajero> listPasajerosByRutaId(String rutaId) {
+        String tenant = TenantContext.getCurrentTenant();
+        String userId = SecurityUtils.getUserIdClaim();
+        assert userId != null;
+        Usuario conductor = usuarioRepository.findByUsername(userId).orElseThrow(() -> new NotFoundException("Usuario no valido"));
+        if (conductor.getConductorId() == null && conductor.getCoordinadorId() == null) {
+            throw new NotFoundException("Usuario no sin acceso a navegacion de rutas");
+        }
+
+        List<Pasajero> pasajeroList = repository.findPasajerosByRutaNative(rutaId);
+        if (pasajeroList.isEmpty()){
+            log.warn("No se encontraron pasajeros para ruta: {} (tenant: {})", rutaId, tenant);
+            throw new NotFoundException("No se encontraron pasajeros para ruta: " + rutaId);
+        }
+
+        log.debug("Listando pasajeros para ruta: {} (tenant: {})", rutaId, tenant);
+        return pasajeroList;
+    }
+
 }

@@ -56,7 +56,7 @@ public class SedeService {
         Sede sede = repository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Sede no encontrada: " + id));
 
-        if (sede.getTenant() != null && !sede.getTenant().equals(tenant)) {
+        if (sede.getTenant() != null && !tenant.contains(sede.getTenant())) {
             log.warn("Acceso denegado a sede {} para tenant {}", id, tenant);
             throw new NotFoundException("Sede no encontrada");
         }

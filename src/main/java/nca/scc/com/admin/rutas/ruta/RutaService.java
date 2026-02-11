@@ -62,7 +62,6 @@ public class RutaService {
 
     /**
      * CREAR RUTA CON VALIDACIÓN DE OWNERSHIP
-     *
      * Reglas:
      * - ROLE_SCHOOL: Solo rutas de sus propias sedes
      * - ROLE_TRANSPORT: Rutas con su tenant TRANSPORT
@@ -106,7 +105,6 @@ public class RutaService {
 
     /**
      * LISTAR RUTAS CON VISIBILIDAD BASADA EN OWNERSHIP + CROSS-TENANT
-     *
      * ROLE_ADMIN: Ve todas
      * ROLE_SCHOOL: Ve rutas de su colegio + rutas donde tiene estudiantes
      * ROLE_TRANSPORT: Ve rutas suyas + rutas donde tiene estudiantes asignados
@@ -145,7 +143,7 @@ public class RutaService {
     }
 
     /**
-     * OBTENER RUTA CON VALIDACIÓN DE OWNERSHIP + CROSS-TENANT ACCESS
+     * OBTENER RUTA CON VALIDATION DE OWNERSHIP + CROSS-TENANT ACCESS
      *
      * Patterns:
      * 1. Ownership: Usuario puede ver rutas de su tenant

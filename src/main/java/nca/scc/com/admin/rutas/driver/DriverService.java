@@ -114,7 +114,6 @@ public class DriverService {
             return emptyRouteHomeTodayResponse(driver.getId(), driver.getNombre(), today);
         }
         Set<String> rutaIds = rutasAsignadas.stream().map(Ruta::getId).collect(Collectors.toSet());
-        List<HistorialRuta> historiales = historialRutaRepository.findByRutaIdInAndFechaOrderByHoraInicioAsc(rutaIds, today);
         List<Ruta> activeRoutes = new ArrayList<>();
         List<Ruta> scheduledRoutes = new ArrayList<>();
         List<Ruta> completedRoutes = new ArrayList<>();
@@ -218,10 +217,7 @@ public class DriverService {
 
         List<DriverRoutePreview> routes = new ArrayList<>();
         for (HistorialRuta h : pageResult.getContent()) {
-            Ruta ruta = rutaRepository.findById(h.getRutaId()).orElse(null);
-            if (ruta != null) {
-                routes.add(toPreview(h, ruta));
-            }
+            rutaRepository.findById(h.getRutaId()).ifPresent(ruta -> routes.add(toPreview(h, ruta)));
         }
 
         List<HistorialRuta> allForSummary = historialRutaRepository.findByRutaIdInAndFechaBetweenAndEstado(

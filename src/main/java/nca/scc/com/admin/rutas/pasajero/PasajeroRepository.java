@@ -29,6 +29,9 @@ public interface PasajeroRepository extends JpaRepository<Pasajero, String> {
 
     // ===== CROSS-TENANT QUERIES (ROLE_ADMIN_TRANSPORT & ROLE_TRANSPORT) =====
 
+    @Query("SELECT p FROM Pasajero p WHERE p.id = :id AND p.tenant IN (SELECT c.tenant FROM Conductor c WHERE c.id = :transportId)")
+    Optional<Pasajero> findByIdAndTransportId(@Param("id") String id, @Param("transportId") String transportId);
+
     /**
      * Estudiantes de sedes administradas por un TRANSPORT tenant
      */
@@ -53,6 +56,15 @@ public interface PasajeroRepository extends JpaRepository<Pasajero, String> {
      */
     @Query("SELECT p FROM Pasajero p, Sede s WHERE p.sedeId = s.id AND s.transportId = :transportId AND s.id = :sedeId")
     List<Pasajero> findBySedeIdAdministrado(@Param("sedeId") String sedeId, @Param("transportId") String transportId);
+
+    @Query("SELECT c.tenant FROM Conductor c WHERE c.id = :id")
+    Optional<String> findTenantById(@Param("id") String id);
+
+    @Query(value = "SELECT p.* FROM pasajero p " +
+            "JOIN ruta_estudiantes re ON re.pasajeros = p.id WHERE re.ruta_id = :rutaId",
+            nativeQuery = true
+    )
+    List<Pasajero> findPasajerosByRutaNative(@Param("rutaId") String rutaId);
 
     // Nuevo: listar por padreId (para ROLE_PARENT)
     List<Pasajero> findByPadreId(String padreId);

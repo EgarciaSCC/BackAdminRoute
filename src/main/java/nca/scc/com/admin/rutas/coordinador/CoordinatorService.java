@@ -4,11 +4,7 @@ import nca.scc.com.admin.rutas.NotFoundException;
 import nca.scc.com.admin.rutas.auth.UsuarioRepository;
 import nca.scc.com.admin.rutas.auth.entity.Usuario;
 import nca.scc.com.admin.rutas.auth.Role;
-import nca.scc.com.admin.rutas.bus.BusRepository;
 import nca.scc.com.admin.rutas.coordinador.entity.Coordinador;
-import nca.scc.com.admin.rutas.historial.HistorialRutaRepository;
-import nca.scc.com.admin.rutas.ruta.RutaRepository;
-import nca.scc.com.admin.rutas.ruta.RutaService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -33,23 +29,11 @@ public class CoordinatorService {
 
     private final UsuarioRepository usuarioRepository;
     private final CoordinadorRepository coordinadorRepository;
-    private final RutaRepository rutaRepository;
-    private final HistorialRutaRepository historialRutaRepository;
-    private final BusRepository busRepository;
-    private final RutaService rutaService;
 
     public CoordinatorService(UsuarioRepository usuarioRepository,
-                             CoordinadorRepository coordinadorRepository,
-                             RutaRepository rutaRepository,
-                             HistorialRutaRepository historialRutaRepository,
-                             BusRepository busRepository,
-                             RutaService rutaService) {
+                             CoordinadorRepository coordinadorRepository) {
         this.usuarioRepository = usuarioRepository;
         this.coordinadorRepository = coordinadorRepository;
-        this.rutaRepository = rutaRepository;
-        this.historialRutaRepository = historialRutaRepository;
-        this.busRepository = busRepository;
-        this.rutaService = rutaService;
     }
 
     /**

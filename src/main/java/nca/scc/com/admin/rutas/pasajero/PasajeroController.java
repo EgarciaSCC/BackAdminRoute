@@ -46,6 +46,12 @@ public class PasajeroController {
         return service.listAll().stream().map(p -> PasajeroPublicDTO.from(p, role)).toList();
     }
 
+    @GetMapping("/listPasajerosByRutaId/{rutaId}")
+    public List<Pasajero> listPasajerosByRutaId(String RutaId) {
+        log.debug("GET /api/pasajeros/listPasajerosByRutaId/{}", RutaId);
+        return service.listPasajerosByRutaId(RutaId);
+    }
+
     @GetMapping("/{id}")
     public PasajeroPublicDTO get(@PathVariable String id) {
         log.debug("GET /api/pasajeros/{}", id);
