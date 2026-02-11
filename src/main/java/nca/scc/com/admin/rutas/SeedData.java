@@ -140,7 +140,7 @@ public class SeedData implements CommandLineRunner {
                 "1088123456",
                 "LIC-2025-001",
                 ConductorState.disponible,
-                transport1 + "," + defaultTenant,
+                String.join(",", defaultTenant, transport1),
                 "A1"
         );
         Conductor savedConductor = conductorRepository.save(conductor);
@@ -154,7 +154,7 @@ public class SeedData implements CommandLineRunner {
                 "1088654321",
                 "LIC-2025-ADMIN",
                 ConductorState.disponible,
-                transport1 + "," + defaultTenant,
+                String.join(",", defaultTenant, transport1),
                 "A1"
         );
         Conductor savedConductorAdmin = conductorRepository.save(conductorAdmin);
@@ -168,7 +168,7 @@ public class SeedData implements CommandLineRunner {
                 "1087654321",
                 "coord@example.com",
                 CoordinadorState.activo,
-                transport1 + "," + defaultTenant
+                String.join(",", defaultTenant, transport1)
         );
         Coordinador savedCoordinador = coordinadorRepository.save(coordinador);
         log.info("✅ Coordinador creado: {}", savedCoordinador.getId());
@@ -517,7 +517,7 @@ public class SeedData implements CommandLineRunner {
                 "Juan Pérez García",
                 "conductor.juan",
                 conductorPasswordHash,
-                transport1 + "," + defaultTenant,
+                String.join(",", defaultTenant, transport1),
                 Role.ROLE_TRANSPORT
         );
         usuarioConductor.setEmail("conductor.juan@example.com");
@@ -530,7 +530,7 @@ public class SeedData implements CommandLineRunner {
                 "María López García",
                 "coordinador.maria",
                 coordinadorPasswordHash,
-                transport1 + "," + defaultTenant,
+                String.join(",", defaultTenant, transport1),
                 Role.ROLE_TRANSPORT
         );
         usuarioCoordinador.setEmail("coordinador.maria@example.com");

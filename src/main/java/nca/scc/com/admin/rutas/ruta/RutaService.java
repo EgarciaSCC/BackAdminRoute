@@ -222,10 +222,8 @@ public class RutaService {
      * Soporta: Ownership + Cross-Tenant (a través de assignment)
      */
     private boolean canAccessRoute(Ruta ruta, Role role, String tenant) {
-        if (role == Role.ROLE_ADMIN) return true;
-
         // Ownership: es el dueño
-        if (ruta.getTenant().equals(tenant)) {
+        if (tenant.contains(ruta.getTenant())) {
             if (role == Role.ROLE_SCHOOL || role == Role.ROLE_TRANSPORT) {
                 return true;
             }
