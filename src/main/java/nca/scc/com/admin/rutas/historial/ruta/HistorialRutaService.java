@@ -1,8 +1,7 @@
-package nca.scc.com.admin.rutas.historial;
+package nca.scc.com.admin.rutas.historial.ruta;
 
 import nca.scc.com.admin.rutas.NotFoundException;
-import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
-import nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta;
+import nca.scc.com.admin.rutas.historial.ruta.entity.HistorialRuta;
 import nca.scc.com.admin.rutas.ruta.RutaRepository;
 import nca.scc.com.admin.rutas.sede.SedeRepository;
 import nca.scc.com.admin.rutas.sede.entity.Sede;

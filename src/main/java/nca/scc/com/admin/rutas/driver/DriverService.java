@@ -11,12 +11,14 @@ import nca.scc.com.admin.rutas.conductor.entity.Conductor;
 import nca.scc.com.admin.rutas.driver.dto.DriverRouteHome;
 import nca.scc.com.admin.rutas.driver.dto.DriverRoutePreview;
 import nca.scc.com.admin.rutas.driver.dto.DriverRouteHistoryResponse;
-import nca.scc.com.admin.rutas.historial.HistorialRutaRepository;
-import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
-import nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta;
+import nca.scc.com.admin.rutas.historial.ruta.HistorialRutaRepository;
+import nca.scc.com.admin.rutas.historial.ruta.entity.HistorialRuta;
+import nca.scc.com.admin.rutas.historial.enums.EstadoHistorialRuta;
 import nca.scc.com.admin.rutas.ruta.RutaRepository;
 import nca.scc.com.admin.rutas.ruta.RutaService;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
+import nca.scc.com.admin.rutas.rutaPasajeros.RutaPasajeroRepository;
+import nca.scc.com.admin.rutas.rutaPasajeros.entity.RutaPasajero;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
@@ -44,19 +46,21 @@ public class DriverService {
     private final RutaRepository rutaRepository;
     private final HistorialRutaRepository historialRutaRepository;
     private final BusRepository busRepository;
+    private final RutaPasajeroRepository rutaPasajeroRepository;
     private final RutaService rutaService;
 
     public DriverService(UsuarioRepository usuarioRepository,
                          ConductorRepository conductorRepository,
                          RutaRepository rutaRepository,
                          HistorialRutaRepository historialRutaRepository,
-                         BusRepository busRepository,
+                         BusRepository busRepository, RutaPasajeroRepository rutaPasajeroRepository,
                          RutaService rutaService) {
         this.usuarioRepository = usuarioRepository;
         this.conductorRepository = conductorRepository;
         this.rutaRepository = rutaRepository;
         this.historialRutaRepository = historialRutaRepository;
         this.busRepository = busRepository;
+        this.rutaPasajeroRepository = rutaPasajeroRepository;
         this.rutaService = rutaService;
     }
 
@@ -337,4 +341,38 @@ public class DriverService {
         }
         return null;
     }
+
+    public Ruta start(String rutaId) {
+        try {
+
+            Conductor driver = resolveDriverFromAuth();
+            Ruta ruta = rutaRepository.findById(rutaId)
+                    .orElseThrow(() -> new NotFoundException("Ruta no encontrada: " + rutaId));
+            if (!ruta.getConductorId().equals(driver.getId()) && !ruta.getCoordinadorId().equals(driver.getId())) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "No autorizado para iniciar esta ruta");
+            }
+            if (!"ACTIVE".equalsIgnoreCase(ruta.getEstado())) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Solo se pueden iniciar rutas en estado ACTIVO");
+            }
+            ruta.setEstado("STARTED");
+            List<RutaPasajero> rutaPasajeros = rutaPasajeroRepository.findByIdRuta(rutaId);
+            Ruta updated = rutaRepository.save(ruta);
+            // Crear historial
+            HistorialRuta h = new HistorialRuta();
+            h.setRutaId(ruta.getId());
+            h.setEstudiantesRecogidos(0);
+            h.setFecha(LocalDate.now().format(DateTimeFormatter.ISO_LOCAL_DATE));
+            h.setHoraInicio(LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")));
+            h.setEstado(EstadoHistorialRuta.iniciada);
+            h.setEstudiantesTotales(rutaPasajeros != null ? rutaPasajeros.size() : 0);
+            h.setKmRecorridos(0);
+            h.setEstudiantesRecogidos(0);
+            h.setNota("Inicio de ruta por conductor/coordinador: " + driver.getNombre());
+            historialRutaRepository.save(h);
+            return updated;
+        } catch (NotFoundException e) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, e.getMessage());
+        }
+    }
+
 }

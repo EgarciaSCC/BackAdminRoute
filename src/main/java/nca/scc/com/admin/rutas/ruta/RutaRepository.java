@@ -11,7 +11,8 @@ import java.util.Optional;
 public interface RutaRepository extends JpaRepository<Ruta, String> {
 
     // ===== OWNERSHIP-BASED QUERIES =====
-
+    @Query("SELECT r FROM Ruta r WHERE r.id = :idRuta")
+    Ruta findByIdRuta(String idRuta);
     /**
      * Rutas propiedad de un tenant específico (SCHOOL o TRANSPORT)
      */

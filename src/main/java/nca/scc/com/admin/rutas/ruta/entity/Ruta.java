@@ -3,7 +3,6 @@ package nca.scc.com.admin.rutas.ruta.entity;
 import jakarta.persistence.*;
 import nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -20,10 +19,6 @@ public class Ruta {
     private String conductorId;
     private String coordinadorId;
     private String sedeId;
-
-    @ElementCollection
-    @Column(name = "pasajeros")
-    private List<String> estudiantes;
 
     private String estado;
     private String createdAt;
@@ -87,10 +82,6 @@ public class Ruta {
 
     public String sedeId() { return this.sedeId; }
     public void sedeId(String sedeId) { this.sedeId = sedeId; }
-
-    // nuevo: getters/setters estándar para estudiantes (usados por servicios)
-    public List<String> getEstudiantes() { return estudiantes; }
-    public void setEstudiantes(List<String> estudiantes) { this.estudiantes = estudiantes; }
 
     public String getEstado() { return estado; }
     public void setEstado(String estado) { this.estado = estado; }

@@ -15,6 +15,8 @@ public interface PasajeroRepository extends JpaRepository<Pasajero, String> {
 
     Optional<Pasajero> findByMatricula(String matricula);
 
+    Optional<Pasajero> findById(String id);
+
     /**
      * Estudiantes de un tenant específico (colegio)
      */

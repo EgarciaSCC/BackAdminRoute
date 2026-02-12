@@ -1,7 +1,7 @@
-package nca.scc.com.admin.rutas.historial;
+package nca.scc.com.admin.rutas.historial.ruta;
 
 import jakarta.validation.Valid;
-import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
+import nca.scc.com.admin.rutas.historial.ruta.entity.HistorialRuta;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 

@@ -1,10 +1,10 @@
-package nca.scc.com.admin.rutas.historial.entity;
+package nca.scc.com.admin.rutas.historial.ruta.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
-import nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta;
+import nca.scc.com.admin.rutas.historial.enums.EstadoHistorialRuta;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -30,20 +30,24 @@ public class HistorialRuta {
     @Column(nullable = false)
     private String horaInicio; // HH:mm
 
-    @NotBlank
-    @Column(nullable = false)
+    @Column(nullable = true)
     private String horaFin; // HH:mm
 
     @Min(0)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private int estudiantesRecogidos;
+
+
+    @Min(0)
+    @Column(nullable = false)
+    private int estudiantesDejados;
 
     @Min(0)
     @Column(nullable = false)
     private int estudiantesTotales;
 
     @Min(0)
-    @Column(nullable = false)
+    @Column(nullable = true)
     private double kmRecorridos;
 
     @ElementCollection
@@ -58,6 +62,9 @@ public class HistorialRuta {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private EstadoHistorialRuta estado;
+
+    @Column(nullable = true, length = 200)
+    private String nota;
 
     /* ======================
        Constructors
@@ -125,6 +132,14 @@ public class HistorialRuta {
         this.estudiantesRecogidos = estudiantesRecogidos;
     }
 
+    public int getEstudiantesDejados() {
+        return estudiantesDejados;
+    }
+
+    public void setEstudiantesDejados(int estudiantesDejados) {
+        this.estudiantesDejados = estudiantesDejados;
+    }
+
     public int getEstudiantesTotales() {
         return estudiantesTotales;
     }
@@ -156,4 +171,8 @@ public class HistorialRuta {
     public void setEstado(EstadoHistorialRuta estado) {
         this.estado = estado;
     }
+
+    public String getNota() { return nota; }
+
+    public void setNota(String nota) { this.nota = nota; }
 }

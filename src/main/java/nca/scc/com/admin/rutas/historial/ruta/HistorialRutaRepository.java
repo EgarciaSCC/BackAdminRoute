@@ -1,7 +1,7 @@
-package nca.scc.com.admin.rutas.historial;
+package nca.scc.com.admin.rutas.historial.ruta;
 
-import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
-import nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta;
+import nca.scc.com.admin.rutas.historial.ruta.entity.HistorialRuta;
+import nca.scc.com.admin.rutas.historial.enums.EstadoHistorialRuta;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;

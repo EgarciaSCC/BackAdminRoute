@@ -1,12 +1,15 @@
-package nca.scc.com.admin.rutas.historial.entity.enums;
+package nca.scc.com.admin.rutas.historial.enums;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonValue;
 
 public enum EstadoHistorialRuta {
+    programada,
+    iniciada,
+    en_curso,
     completada,
-    cancelada,
-    parcial;
+    parcial,
+    cancelada;
 
     @JsonCreator
     public static EstadoHistorialRuta from(String v) {
@@ -18,3 +21,4 @@ public enum EstadoHistorialRuta {
         return this.name();
     }
 }
+

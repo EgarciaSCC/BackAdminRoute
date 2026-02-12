@@ -14,6 +14,7 @@ import nca.scc.com.admin.rutas.conductor.entity.enums.ConductorState;
 import nca.scc.com.admin.rutas.coordinador.CoordinadorRepository;
 import nca.scc.com.admin.rutas.coordinador.entity.Coordinador;
 import nca.scc.com.admin.rutas.coordinador.entity.enums.CoordinadorState;
+import nca.scc.com.admin.rutas.historial.enums.EstadoHistorialRuta;
 import nca.scc.com.admin.rutas.novedad.NovedadRepository;
 import nca.scc.com.admin.rutas.novedad.entity.Novedad;
 import nca.scc.com.admin.rutas.novedad.entity.enums.NovedadCategoria;
@@ -21,12 +22,16 @@ import nca.scc.com.admin.rutas.novedad.entity.enums.NovedadTipo;
 import nca.scc.com.admin.rutas.novedad.entity.enums.RolCreador;
 import nca.scc.com.admin.rutas.ruta.RutaRepository;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
+import nca.scc.com.admin.rutas.rutaPasajeros.RutaPasajeroRepository;
+import nca.scc.com.admin.rutas.rutaPasajeros.entity.RutaPasajero;
+import nca.scc.com.admin.rutas.rutaPasajeros.entity.RutaPasajeroId;
+import nca.scc.com.admin.rutas.rutaPasajeros.entity.enums.EstadoRutaPasajeros;
 import nca.scc.com.admin.rutas.sede.SedeRepository;
 import nca.scc.com.admin.rutas.sede.entity.Sede;
 import nca.scc.com.admin.rutas.pasajero.PasajeroRepository;
 import nca.scc.com.admin.rutas.pasajero.entity.Pasajero;
-import nca.scc.com.admin.rutas.historial.HistorialRutaRepository;
-import nca.scc.com.admin.rutas.historial.entity.HistorialRuta;
+import nca.scc.com.admin.rutas.historial.ruta.HistorialRutaRepository;
+import nca.scc.com.admin.rutas.historial.ruta.entity.HistorialRuta;
 import nca.scc.com.admin.rutas.auth.Role;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -55,6 +60,7 @@ public class SeedData implements CommandLineRunner {
     private final NovedadRepository novedadRepository;
     private final HistorialRutaRepository historialRutaRepository;
     private final UsuarioRepository usuarioRepository;
+    private final RutaPasajeroRepository rutaPasajeroRepository;
 
     public SeedData(BusRepository busRepository,
                     ConductorRepository conductorRepository,
@@ -65,7 +71,7 @@ public class SeedData implements CommandLineRunner {
                     PasajeroRepository pasajeroRepository,
                     NovedadRepository novedadRepository,
                     HistorialRutaRepository historialRutaRepository,
-                    UsuarioRepository usuarioRepository) {
+                    UsuarioRepository usuarioRepository, RutaPasajeroRepository rutaPasajeroRepository) {
         this.busRepository = busRepository;
         this.conductorRepository = conductorRepository;
         this.coordinadorRepository = coordinadorRepository;
@@ -76,6 +82,7 @@ public class SeedData implements CommandLineRunner {
         this.novedadRepository = novedadRepository;
         this.historialRutaRepository = historialRutaRepository;
         this.usuarioRepository = usuarioRepository;
+        this.rutaPasajeroRepository = rutaPasajeroRepository;
     }
 
     @Override
@@ -345,14 +352,6 @@ public class SeedData implements CommandLineRunner {
         ruta.coordinadorId(savedCoordinador.getId());
         ruta.sedeId(savedSede.getId());
         ruta.setTenant(transport1);
-        ruta.setEstudiantes(List.of(
-                est1.getId(),
-                est2.getId(),
-                est3.getId(),
-                est4.getId(),
-                est5.getId(),
-                est6.getId()
-        ));
 
         // Configurar día de la semana actual
         ruta.setTipoRuta(nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta.RECOGIDA);
@@ -368,6 +367,22 @@ public class SeedData implements CommandLineRunner {
                  ruta.getHoraInicio(),
                  ruta.getHoraFin());
 
+        RutaPasajeroId rpId1 = new RutaPasajeroId(savedRuta.getId(), est1.getId());
+        RutaPasajeroId rpId2 = new RutaPasajeroId(savedRuta.getId(), est2.getId());
+        RutaPasajeroId rpId3 = new RutaPasajeroId(savedRuta.getId(), est3.getId());
+        RutaPasajeroId rpId4 = new RutaPasajeroId(savedRuta.getId(), est4.getId());
+        RutaPasajeroId rpId5 = new RutaPasajeroId(savedRuta.getId(), est5.getId());
+        RutaPasajeroId rpId6 = new RutaPasajeroId(savedRuta.getId(), est6.getId());
+        rutaPasajeroRepository.saveAll(List.of(
+                new RutaPasajero(rpId1, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpId2, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpId3, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpId4, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpId5, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpId6, EstadoRutaPasajeros.PENDIENTE)
+        ));
+        log.info("✅ 6 estudiantes asignados a la ruta de hoy");
+
         // ========== CREAR HISTORIAL PARA HOY ==========
         String todayDate = now.format(DateTimeFormatter.ofPattern("yyyy-MM-dd"));
         HistorialRuta historial = new HistorialRuta();
@@ -378,7 +393,7 @@ public class SeedData implements CommandLineRunner {
         historial.setEstudiantesRecogidos(6);
         historial.setEstudiantesTotales(6);
         historial.setKmRecorridos(12.5);
-        historial.setEstado(nca.scc.com.admin.rutas.historial.entity.enums.EstadoHistorialRuta.completada);
+        historial.setEstado(EstadoHistorialRuta.completada);
 
         HistorialRuta savedHistorial = historialRutaRepository.save(historial);
         log.info("✅ Historial creado para hoy: {}", savedHistorial.getId());
@@ -471,12 +486,6 @@ public class SeedData implements CommandLineRunner {
         rutaSanJose.coordinadorId(savedCoordinador.getId());  // ✅ Coordinadora María López
         rutaSanJose.sedeId(savedSedeSanJose.getId());
         rutaSanJose.setTenant(transport1);
-        rutaSanJose.setEstudiantes(List.of(
-                estSJ1.getId(),
-                estSJ2.getId(),
-                estSJ3.getId(),
-                estSJ4.getId()
-        ));
 
         // Configurar como ruta programada (PROGRAMMED en lugar de ACTIVE)
         rutaSanJose.setTipoRuta(nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta.RECOGIDA);
@@ -497,6 +506,23 @@ public class SeedData implements CommandLineRunner {
         log.info("   👨‍✈️  Conductor: Juan Pérez García");
         log.info("   👩‍✈️  Coordinadora: María López García");
         log.info("   ⏰ Hora Inicio: {} | Fin: {}", rutaSanJose.getHoraInicio(), rutaSanJose.getHoraFin());
+
+        //guardar estudiantes en la ruta programada
+        RutaPasajeroId rutaPasajeroId1 = new RutaPasajeroId(savedRutaSanJose.getId(), estSJ1.getId());
+        rutaPasajeroRepository.save(new RutaPasajero(rutaPasajeroId1, EstadoRutaPasajeros.PENDIENTE));
+        log.info("✅ Estudiante {} asignado a ruta programada SAN JOSÉ", estSJ1.getNombre());
+
+        RutaPasajeroId rutaPasajeroId2 = new RutaPasajeroId(savedRutaSanJose.getId(), estSJ2.getId());
+        rutaPasajeroRepository.save(new RutaPasajero(rutaPasajeroId2, EstadoRutaPasajeros.PENDIENTE));
+        log.info("✅ Estudiante {} asignado a ruta programada SAN JOSÉ", estSJ2.getNombre());
+
+        RutaPasajeroId rutaPasajeroId3 = new RutaPasajeroId(savedRutaSanJose.getId(), estSJ3.getId());
+        rutaPasajeroRepository.save(new RutaPasajero(rutaPasajeroId3, EstadoRutaPasajeros.PENDIENTE));
+        log.info("✅ Estudiante {} asignado a ruta programada SAN JOSÉ", estSJ3.getNombre());
+
+        RutaPasajeroId rutaPasajeroId4 = new RutaPasajeroId(savedRutaSanJose.getId(), estSJ4.getId());
+        rutaPasajeroRepository.save(new RutaPasajero(rutaPasajeroId4, EstadoRutaPasajeros.PENDIENTE));
+        log.info("✅ Estudiante {} asignado a ruta programada SAN JOSÉ", estSJ4.getNombre());
 
         // ========== CREAR USUARIOS PARA CONDUCTOR Y COORDINADOR ==========
         String conductorPassword = "conductor123";
@@ -614,17 +640,23 @@ public class SeedData implements CommandLineRunner {
         rutaProgramada.coordinadorId(savedCoordinador.getId());
         rutaProgramada.sedeId(savedSede.getId());
         rutaProgramada.setTenant(transport1);
-        rutaProgramada.setEstudiantes(List.of(
-                est1.getId(),
-                est2.getId(),
-                est3.getId()
-        ));
+
         rutaProgramada.setTipoRuta(nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta.RECOGIDA);
         rutaProgramada.setEstado("PROGRAMMED");
         rutaProgramada.setHoraInicio(String.format("%02d:%02d", rutaProgramadaStart.getHour(), rutaProgramadaStart.getMinute()));
         rutaProgramada.setHoraFin(String.format("%02d:%02d", rutaProgramadaEnd.getHour(), rutaProgramadaEnd.getMinute()));
         rutaRepository.save(rutaProgramada);
         log.info("✅ Ruta programada creada: {}", rutaProgramada.getNombre());
+
+        RutaPasajeroId rpIdP1 = new RutaPasajeroId(rutaProgramada.getId(), est1.getId());
+        RutaPasajeroId rpIdP2 = new RutaPasajeroId(rutaProgramada.getId(), est2.getId());
+        RutaPasajeroId rpIdP3 = new RutaPasajeroId(rutaProgramada.getId(), est3.getId());
+        rutaPasajeroRepository.saveAll(List.of(
+                new RutaPasajero(rpIdP1, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpIdP2, EstadoRutaPasajeros.PENDIENTE),
+                new RutaPasajero(rpIdP3, EstadoRutaPasajeros.PENDIENTE)
+        ));
+        log.info("✅ 3 estudiantes asignados a la ruta programada");
 
         // ========== CREAR 3 RUTAS COMPLETADAS ==========
         for (int i = 1; i <= 3; i++) {
@@ -635,17 +667,21 @@ public class SeedData implements CommandLineRunner {
             rutaCompletada.coordinadorId(savedCoordinador.getId());
             rutaCompletada.sedeId(savedSede.getId());
             rutaCompletada.setTenant(transport1);
-            rutaCompletada.setEstudiantes(List.of(
-                    est4.getId(),
-                    est5.getId(),
-                    est6.getId()
-            ));
+
             rutaCompletada.setTipoRuta(nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta.RECOGIDA);
             rutaCompletada.setEstado("COMPLETED");
             rutaCompletada.setHoraInicio("08:00");
             rutaCompletada.setHoraFin("09:00");
             rutaRepository.save(rutaCompletada);
             log.info("✅ Ruta completada creada: {}", rutaCompletada.getNombre());
+            RutaPasajeroId rpIdC1 = new RutaPasajeroId(rutaCompletada.getId(), est4.getId());
+            RutaPasajeroId rpIdC2 = new RutaPasajeroId(rutaCompletada.getId(), est5.getId());
+            RutaPasajeroId rpIdC3 = new RutaPasajeroId(rutaCompletada.getId(), est6.getId());
+            rutaPasajeroRepository.saveAll(List.of(
+                    new RutaPasajero(rpIdC1, EstadoRutaPasajeros.PENDIENTE),
+                    new RutaPasajero(rpIdC2, EstadoRutaPasajeros.PENDIENTE),
+                    new RutaPasajero(rpIdC3, EstadoRutaPasajeros.PENDIENTE)
+            ));
         }
 
         // ========== CREAR AGENDAS DE RUTAS PARA DOS DÍAS POSTERIORES ==========
@@ -660,17 +696,21 @@ public class SeedData implements CommandLineRunner {
             agendaRuta.coordinadorId(savedCoordinador.getId());
             agendaRuta.sedeId(savedSede.getId());
             agendaRuta.setTenant(transport1);
-            agendaRuta.setEstudiantes(List.of(
-                    est4.getId(),
-                    est5.getId(),
-                    est6.getId()
-            ));
+
             agendaRuta.setTipoRuta(nca.scc.com.admin.rutas.ruta.entity.enums.TipoRuta.RECOGIDA);
             agendaRuta.setEstado("PROGRAMMED");
             agendaRuta.setHoraInicio(String.format("%02d:%02d", agendaStart.getHour(), agendaStart.getMinute()));
             agendaRuta.setHoraFin(String.format("%02d:%02d", agendaEnd.getHour(), agendaEnd.getMinute()));
             rutaRepository.save(agendaRuta);
             log.info("✅ Agenda de ruta creada para el día {}: {}", day, agendaRuta.getNombre());
+            RutaPasajeroId rpIdA1 = new RutaPasajeroId(agendaRuta.getId(), est4.getId());
+            RutaPasajeroId rpIdA2 = new RutaPasajeroId(agendaRuta.getId(), est5.getId());
+            RutaPasajeroId rpIdA3 = new RutaPasajeroId(agendaRuta.getId(), est6.getId());
+            rutaPasajeroRepository.saveAll(List.of(
+                    new RutaPasajero(rpIdA1, EstadoRutaPasajeros.PENDIENTE),
+                    new RutaPasajero(rpIdA2, EstadoRutaPasajeros.PENDIENTE),
+                    new RutaPasajero(rpIdA3, EstadoRutaPasajeros.PENDIENTE)
+            ));
         }
 
         log.warn("Métodos setTenants no existen en Conductor y Coordinador. Revisar implementación.");

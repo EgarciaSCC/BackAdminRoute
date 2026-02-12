@@ -4,6 +4,9 @@ import nca.scc.com.admin.rutas.NotFoundException;
 import nca.scc.com.admin.rutas.ruta.dto.ParadaTemporalDTO;
 import nca.scc.com.admin.rutas.ruta.dto.RutaResponseDTO;
 import nca.scc.com.admin.rutas.ruta.entity.Ruta;
+import nca.scc.com.admin.rutas.rutaPasajeros.RutaPasajeroRepository;
+import nca.scc.com.admin.rutas.rutaPasajeros.entity.RutaPasajero;
+import nca.scc.com.admin.rutas.rutaPasajeros.entity.RutaPasajeroId;
 import nca.scc.com.admin.rutas.sede.SedeRepository;
 import nca.scc.com.admin.rutas.sede.entity.Sede;
 import nca.scc.com.admin.rutas.bus.BusRepository;
@@ -42,6 +45,7 @@ public class RutaService {
     private final ConductorRepository conductorRepository;
     private final CoordinadorRepository coordinadorRepository;
     private final PasajeroRepository pasajeroRepository;
+    private final RutaPasajeroRepository rutaPasajeroRepository;
 
     // almacenamiento en memoria para paradas temporales por ruta
     private final Map<String, List<ParadaTemporalDTO>> paradasTemporales = new ConcurrentHashMap<>();
@@ -51,13 +55,14 @@ public class RutaService {
                        BusRepository busRepository,
                        ConductorRepository conductorRepository,
                        CoordinadorRepository coordinadorRepository,
-                       PasajeroRepository pasajeroRepository) {
+                       PasajeroRepository pasajeroRepository, RutaPasajeroRepository rutaPasajeroRepository) {
         this.repository = repository;
         this.sedeRepository = sedeRepository;
         this.busRepository = busRepository;
         this.conductorRepository = conductorRepository;
         this.coordinadorRepository = coordinadorRepository;
         this.pasajeroRepository = pasajeroRepository;
+        this.rutaPasajeroRepository = rutaPasajeroRepository;
     }
 
     /**
@@ -263,13 +268,7 @@ public class RutaService {
                 throw new NotFoundException("Sede no encontrada: " + ruta.getSedeId());
             }
         }
-        if (ruta.getEstudiantes() != null) {
-            for (String pId : ruta.getEstudiantes()) {
-                if (!pasajeroRepository.existsById(pId)) {
-                    throw new NotFoundException("Pasajero no encontrado: " + pId);
-                }
-            }
-        }
+
     }
 
     /**
@@ -281,14 +280,17 @@ public class RutaService {
         Role role = SecurityUtils.getRoleClaim();
         String tenant = SecurityUtils.getTenantClaim("tid");
 
-        if (ruta.getEstudiantes() == null || ruta.getEstudiantes().isEmpty()) {
+        List<RutaPasajero> rutaPasajeros = rutaPasajeroRepository.findByIdRuta(ruta.getId());
+
+        if (rutaPasajeros == null || rutaPasajeros.isEmpty()) {
             return;
         }
 
         // Para ROLE_TRANSPORT: validar que los estudiantes pertenecen a sedes que administra
         if (role == Role.ROLE_TRANSPORT) {
             List<Sede> sedesAutorizadas = sedeRepository.findByTransportId(tenant);
-            for (String estudianteId : ruta.getEstudiantes()) {
+            for (RutaPasajero pasajero : rutaPasajeros) {
+                String estudianteId = pasajero.getId().getPasajeroId();
                 Pasajero p = pasajeroRepository.findById(estudianteId)
                         .orElseThrow(() -> new NotFoundException("Estudiante no encontrado: " + estudianteId));
 
@@ -305,7 +307,8 @@ public class RutaService {
 
         // Para ROLE_SCHOOL: validar que estudiantes son del colegio
         if (role == Role.ROLE_SCHOOL) {
-            for (String estudianteId : ruta.getEstudiantes()) {
+            for (RutaPasajero pasajero : rutaPasajeros) {
+                String estudianteId = pasajero.getId().getPasajeroId();
                 Pasajero p = pasajeroRepository.findById(estudianteId)
                         .orElseThrow(() -> new NotFoundException("Estudiante no encontrado: " + estudianteId));
 
@@ -348,8 +351,12 @@ public class RutaService {
         if (r.getSedeId() != null && !r.getSedeId().isBlank()) {
             sede = sedeRepository.findById(r.getSedeId()).orElse(null);
         }
-        if (r.getEstudiantes() != null) {
-            for (String pid : r.getEstudiantes()) {
+
+        List<RutaPasajero> rutaPasajero = rutaPasajeroRepository.findByIdRuta(id);
+
+        if (rutaPasajero != null) {
+            for (RutaPasajero rp : rutaPasajero) {
+                String pid = rp.getId().getPasajeroId();
                 pasajeroRepository.findById(pid).ifPresent(pasajeros::add);
             }
         }
@@ -400,11 +407,19 @@ public class RutaService {
             throw new IllegalStateException("Ruta sin fecha especificada: " + rutaId);
         }
 
+        List<RutaPasajero> asignaciones = rutaPasajeroRepository.findByIdPasajero(estudianteId);
         // Obtener todas las rutas del estudiante en el mismo día
-        List<Ruta> rutasDelDia = repository.findAll().stream()
-                .filter(r -> r.getEstudiantes() != null && r.getEstudiantes().contains(estudianteId))
-                .filter(r -> r.getFecha() != null && r.getFecha().equals(rutaDestino.getFecha()))
+        List<RutaPasajeroId> rutasPasajeroIds = asignaciones.stream()
+                .map(RutaPasajero::getId)
+                .filter(id -> id.getPasajeroId().equals(estudianteId))
                 .toList();
+
+        //eliminamos las rutas que no son del mismo día
+        List<Ruta> rutasDelDia = asignaciones.stream()
+                .map(rp -> repository.findById(rp.getId().getRutaId()).orElse(null))
+                .filter(r -> r != null && r.getFecha() != null && r.getFecha().equals(rutaDestino.getFecha()))
+                .toList();
+
 
         log.debug("Estudiante {} tiene {} rutas en el día {}", estudianteId, rutasDelDia.size(), rutaDestino.getFecha());        // Validación 1: Máximo 2 rutas por día
         if (rutasDelDia.size() >= 2) {
@@ -483,19 +498,14 @@ public class RutaService {
 
         Ruta ruta = getById(rutaId);
 
-        // Inicializar lista de estudiantes si es nula
-        if (ruta.getEstudiantes() == null) {
-            ruta.setEstudiantes(new ArrayList<>());
-        }
-
-        // Añadir el estudiante a la lista
-        ruta.getEstudiantes().add(estudianteId);
-
         // Incrementar capacidad actual
         Integer capacidadActual = ruta.getCapacidadActual() != null ? ruta.getCapacidadActual() : 0;
         ruta.setCapacidadActual(capacidadActual + 1);
-
         Ruta actualizada = repository.save(ruta);
+        // Crear relación en RutaPasajero
+        RutaPasajero rp = new RutaPasajero();
+        rp.setId(new RutaPasajeroId(rutaId, estudianteId));
+        rutaPasajeroRepository.save(rp);
         log.info("Estudiante {} asignado a ruta {} exitosamente", estudianteId, rutaId);
         return actualizada;
     }

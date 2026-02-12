@@ -11,9 +11,7 @@ import nca.scc.com.admin.security.SecurityUtils;
 import nca.scc.com.admin.rutas.auth.UsuarioRepository;
 import nca.scc.com.admin.rutas.auth.entity.Usuario;
 import nca.scc.com.admin.rutas.auth.Role;
-import nca.scc.com.admin.rutas.ruta.RutaRepository;
 
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
@@ -31,7 +29,7 @@ public class PasajeroService {
     private final PasajeroRepository repository;
     private final UsuarioRepository usuarioRepository;
 
-    public PasajeroService(PasajeroRepository repository, UsuarioRepository usuarioRepository, RutaRepository rutaRepository) {
+    public PasajeroService(PasajeroRepository repository, UsuarioRepository usuarioRepository) {
         this.repository = repository;
         this.usuarioRepository = usuarioRepository;
     }
@@ -215,6 +213,37 @@ public class PasajeroService {
 
         log.debug("Listando pasajeros para ruta: {} (tenant: {})", rutaId, tenant);
         return pasajeroList;
+    }
+
+    /**
+     * Listar pasajeros visibles para el usuario autenticado según rol
+     */
+    public List<Pasajero> listPasajerosByIds(List<String> ids) {
+        Role role = SecurityUtils.getRoleClaim();
+        String tenant = SecurityUtils.getTenantClaim("tid");
+        String userId = SecurityUtils.getUserIdClaim();
+
+        List<Pasajero> pasajeros = repository.findAllById(ids);
+        for (Pasajero p : pasajeros) {
+
+            if ((role == Role.ROLE_TRANSPORT || role == Role.ROLE_SCHOOL) && tenant != null) {
+                if (!tenant.contains(p.getTenant())) {
+                    throw new NotFoundException("Pasajero no encontrado: " + p.getId());
+                }
+                continue;
+            }
+
+            // ROLE_PARENT (padre) -> verificar padreId
+            Usuario u = usuarioRepository.findByUsername(userId).orElse(null);
+            if (u != null && u.getRole() == Role.ROLE_SCHOOL) {
+                if (repository.existsByIdAndPadreId(p.getId(), u.getId())) continue;
+                throw new NotFoundException("Pasajero no encontrado: " + p.getId());
+            }
+
+            throw new NotFoundException("Pasajero no encontrado: " + p.getId());
+        }
+
+        return repository.findAllById(ids);
     }
 
 }
